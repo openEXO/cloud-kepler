@@ -2,8 +2,9 @@
 """An initial stab at a Kepler FITS downloader:
    http://www.michael-noll.com/tutorials/writing-an-hadoop-mapreduce-program-in-python/"""
 import sys
-import argparse
+import logging
 import urllib2
+
 
 QUARTER_PREFIXES = {'0':  "2010265121752",
                     '1':  "2009166043257",
@@ -27,16 +28,28 @@ def read_input(file):
         # split the line into words
         yield line.split()
 
+def download_file_serialize(uri, kepler_id, quarter):
+    "Download FITS file for each quarter for each object into memory and read FITS file"
+    logging.info("Downloading: "+uri, level=logging.DEBUG)
+    try:
+        response = urllib2.urlopen(uri)
+        fits = response.read()
+    except:
+        logging.error("Cannot download: "+ uri)
+        fits = ""
+    return fits
+
 def prepare_path(kepler_id,quarter):
-    prefix = kepler_id[0:3]
+    prefix = kepler_id[0:4]
     path = "http://archive.stsci.edu/pub/kepler/lightcurves/"+\
         prefix+"/"+kepler_id+"/kplr"+kepler_id+"-"+QUARTER_PREFIXES[quarter]+"_llc.fits"
-    yield path
+    return path
 
 def main(separator="\t"):
     data = read_input(sys.stdin)
     for kepler_id, quarter in data:
         path = prepare_path(kepler_id, quarter)
+        fits_stream = download_file_serialize(path, kepler_id, quarter)
         print kepler_id, quarter, path
 
 if __name__ == "__main__":
