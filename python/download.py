@@ -4,6 +4,7 @@
 import sys
 import logging
 import urllib2
+import StringIO
 
 
 QUARTER_PREFIXES = {'0':  "2010265121752",
@@ -30,14 +31,17 @@ def read_input(file):
 
 def download_file_serialize(uri, kepler_id, quarter):
     "Download FITS file for each quarter for each object into memory and read FITS file"
-    logging.info("Downloading: "+uri, level=logging.DEBUG)
+    logging.warning("Downloading: KIC"+kepler_id+" quarter: "+quarter)
+    fits_object = StringIO.StringIO()
     try:
         response = urllib2.urlopen(uri)
-        fits = response.read()
+        fits_stream = response.read()
+        #Write file object
+        fits_object.write(fits_stream)
     except:
         logging.error("Cannot download: "+ uri)
-        fits = ""
-    return fits
+        fits_object.write("")
+    return fits_object
 
 def prepare_path(kepler_id,quarter):
     prefix = kepler_id[0:4]
