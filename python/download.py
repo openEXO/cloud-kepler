@@ -4,7 +4,9 @@
 import sys
 import argparse
 
-QUARTER_PREFIXES = {0: "something"}
+QUARTER_PREFIXES = {'0': "something",
+                    '1': "something",
+                    '2': "something",}
 
 def read_input(file):
     for line in file:
