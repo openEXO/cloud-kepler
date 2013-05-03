@@ -8,6 +8,7 @@ import urllib2
 import tempfile
 from contextlib import contextmanager
 import pyfits
+import base64
 
 QUARTER_PREFIXES = {'0':  "2010265121752",
                     '1':  "2009166043257",
@@ -50,8 +51,8 @@ def process_fits_object(fits_string):
     """
     
     with tempinput(fits_string) as tempfilename:
-        pyfits.info(tempfilename)
-    return
+        fits_array = pyfits.getdata(tempfilename)
+    return base64.b64encode(fits_array.tostring())
 
 def download_file_serialize(uri, kepler_id, quarter):
     """"
@@ -84,11 +85,11 @@ def main(separator="\t"):
         path = prepare_path(kepler_id, quarter)
         fits_stream = download_file_serialize(path, kepler_id, quarter)
         
-        status = process_fits_object(fits_stream)
+        fits_array_string = process_fits_object(fits_stream)
 
         #Write the result to STDOUT as this will be an input to a
         #reducer that aggregates the querters together
-        print kepler_id, quarter, path
+        print kepler_id, quarter, path, fits_array_string
 
 if __name__ == "__main__":
     main()
