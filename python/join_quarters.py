@@ -26,6 +26,7 @@ def main(separator='\t'):
     # groupby groups multiple quarters together for each Kepler ID
     #   current_kic is current Kepler ID
     #   group - iterator yielding all ["&lt;current_word&gt;", "&lt;count&gt;"] items
+    concatenated_time_flux_eflux = list()
     for current_kic, group in groupby(data, itemgetter(0)):
         try:
             all_quarters = [[q, flux] for _, q, _, flux in group]
