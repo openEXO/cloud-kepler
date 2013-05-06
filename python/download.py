@@ -9,6 +9,7 @@ import tempfile
 from contextlib import contextmanager
 import pyfits
 import base64
+import numpy as np
 
 QUARTER_PREFIXES = {'0':  "2010265121752",
                     '1':  "2009166043257",
@@ -51,8 +52,9 @@ def process_fits_object(fits_string):
     """
     
     with tempinput(fits_string) as tempfilename:
-        fits_array = pyfits.getdata(tempfilename)
-    return base64.b64encode(fits_array.tostring())
+        fits_list = pyfits.getdata(tempfilename)
+        time_pdcflux_pdcerror = np.asarray([[c[0],c[7],c[8]] for c in fits_list])
+    return base64.b64encode(time_pdcflux_pdcerror.tostring())
 
 def download_file_serialize(uri, kepler_id, quarter):
     """"
