@@ -89,13 +89,16 @@ def main(separator="\t"):
     """
     data = read_input(sys.stdin)
     for kepler_id, quarter in data:
-        path = prepare_path(kepler_id, quarter)
-        fits_stream = download_file_serialize(path, kepler_id, quarter)
-        fits_array_string = process_fits_object(fits_stream)
+        try:
+            path = prepare_path(kepler_id, quarter)
+            fits_stream = download_file_serialize(path, kepler_id, quarter)
+            fits_array_string = process_fits_object(fits_stream)
 
-        #Write the result to STDOUT as this will be an input to a
-        #reducer that aggregates the querters together
-        print "\t".join([kepler_id, quarter, path, fits_array_string])
+            #Write the result to STDOUT as this will be an input to a
+            #reducer that aggregates the querters together
+            print "\t".join([kepler_id, quarter, path, fits_array_string])
+        except:
+            pass
 
 if __name__ == "__main__":
     main()
