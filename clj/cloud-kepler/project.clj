@@ -9,7 +9,7 @@
 
                  [cascalog "1.8.6"]
                  [org.clojure/tools.cli "0.2.1"]
-                                        ;[org.apache.maven/super-pom "2.0"]
+                 
                  [clj-http "0.3.6"]
                  [cascading/cascading-core "1.2.4"
                   :exclusions [org.codehaus.janino/janino

@@ -9,6 +9,9 @@
   [:python "python interpreter" nil]
   [:kid-input "Kepler id, quarter input file" nil])
 
+(add-validators
+  (val-opts :required [:python :kid-input]))
+
 (deflcuster cloud-kepler-cluster
   :num-instances 2
   :spot-task-group "c1.xlarge, 75%, 10"
