@@ -7,15 +7,18 @@
 
 (catch-args
   [:python "python interpreter" nil]
+  ;http://stackoverflow.com/questions/1252965/distributing-my-python-scripts-as-jars-with-jython
+  [:python-jar "Path to the python jar" nil]
   [:kid-input "Kepler id, quarter input file" nil])
 
 (add-validators
-  (val-opts :required [:python :kid-input]))
+  (val-opts :required [:python :kid-input :python-jar]))
 
-(deflcuster cloud-kepler-cluster
+(defcluster cloud-kepler-cluster
   :num-instances 2
-  :spot-task-group "c1.xlarge, 75%, 10"
+  :spot-task-group "c1.xlarge,75%,10"
   :app "cloud-kepler"
+  :keypair "only_local"
   :slave-instance-type "c1.xlarge"
   :master-instance-type "m2.2xlarge"
   :hadoop-config.custom ["-m" "mapred.tasktracker.map.tasks.maximum=8"])
