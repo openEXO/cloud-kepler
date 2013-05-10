@@ -1,4 +1,4 @@
-(ns cloud-kepler.download-stitch
+(ns cloud-kepler.hadoop.download-stitch
   (:require
    [cascalog
     conf

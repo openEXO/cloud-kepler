@@ -18,7 +18,7 @@
   :hadoop-config.custom ["-m" "mapred.tasktracker.map.tasks.maximum=8"])
 
 (defstep download-stitch
-  :main-class "cloud-kepler.download-stitch"
+  :main-class "cloud-kepler.hadoop.download_stitch"
   :step-name "Downoload FITS files and stitch quarters"
   :remote-kic-file "${data-uri}/kic-input.txt"
   :upload ["${kid-input}" :to "${remote-kic-file}"]
