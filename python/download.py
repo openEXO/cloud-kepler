@@ -65,7 +65,6 @@ def download_file_serialize(uri, kepler_id, quarter):
     """"
     Download FITS file for each quarter for each object into memory and read FITS file.
     """
-    logging.warning("Downloading: KIC"+kepler_id+" quarter: "+quarter)
     try:
         response = urllib2.urlopen(uri)
         fits_stream = response.read()

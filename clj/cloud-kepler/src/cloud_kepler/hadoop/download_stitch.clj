@@ -42,7 +42,8 @@
                                      "-output" output
                                      "-mapper" mapper
                                      "-reducer" reducer]
-                                    (when jar ["-cacheArchive" jar]))))
+                                    ;(when jar ["-cacheArchive" jar])
+                                    )))
         flow (MapReduceFlow. "download-stitch" job-configuration)]
     (.connect (CascadeConnector.) (into-array MapReduceFlow [flow]))))
 

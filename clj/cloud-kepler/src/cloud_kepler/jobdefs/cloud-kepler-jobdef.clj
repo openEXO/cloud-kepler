@@ -18,6 +18,13 @@
   :num-instances 2
   :spot-task-group "c1.xlarge,75%,10"
   :jar-src-path "clj/cloud-kepler/cloud-kepler-1.0.0-SNAPSHOT-standalone.jar"
+
+  :local {:hadoop-env {"HADOOP_HEAPSIZE" "2048"}
+          :python-jar "."
+          :num-map-tasks "1"
+          :python "python"
+          :kid-input "test/test_q1.txt"}
+    
   :app "cloud-kepler"
   :keypair "only_local"
   :slave-instance-type "c1.xlarge"
@@ -30,9 +37,6 @@
   :remote-kic-file "${data-uri}/kic-input.txt"
   :upload ["${kid-input}" :to "${remote-kic-file}"]
   :output-path "${data-uri}/joined-quarters"
-  :local {:hadoop-env {"HADOOP_HEAPSIZE" "2048"}
-          :python-jar nil
-          :num-map-tasks "1"}
   :args.python "${python}"
   :args.jar "${python-jar}"
   :args.positional ["${remote-kic-file}" "${output-path}"])
