@@ -1,0 +1,13 @@
+# cloud-kepler
+
+Cascading wrappers for the HADOOP cloud-kepler pipeline
+
+## Usage
+
+If you want to find your own Earth sized planet, use this code. 
+
+## License
+
+Copyright (C) 2013 Pavel Machalek
+
+Distributed under the Eclipse Public License, the same as Clojure.
