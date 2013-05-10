@@ -1,12 +1,13 @@
 (ns cloud-kepler.download-stitch
-  (:use
-   cascalog.api
+  (:require
    [cascalog
     conf
     [tap :as tap]
     [workflow :as w]
-    [io: as io]
-    [api :as api]]
+    [io :as io]
+    [api :as api]])
+  (:use
+   cascalog.api
    [clojure.tools.cli :only (cli)]
    [clojure.string :only (split join)])
   (:import
@@ -21,7 +22,7 @@
     FileUtil Path])
   (:gen-class))
 
-(defn download-stitch-cascade
+(defn download-stitch-q
   "Creata a download and stitch cascade for the first part of the
    cloud-kepler pipeline."
   [kepler-ids-quarters joined-quarters ;taps
@@ -67,5 +68,5 @@
                                               ["flux" String]])
           download-stitch-cascade (download-stitch-q
                                    input-tap output-tap
-                                   (opts :python) (opts :jar))
-          (.complete download-stitch-cascade)])))
+                                   (opts :python) (opts :jar))]
+       (.complete download-stitch-cascade))))
