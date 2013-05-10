@@ -9,7 +9,8 @@
   (:use
    cascalog.api
    [clojure.tools.cli :only (cli)]
-   [clojure.string :only (split join)])
+   [clojure.string :only (split join)]
+   [cascalog.more-taps :only (lfs-delimited)])
   (:import
    [cascading.flow MapReduceFlow]
    [cascading.scheme Scheme TextDelimited TextLine
@@ -45,11 +46,6 @@
         flow (MapReduceFlow. "download-stitch" job-configuration)]
     (.connect (CascadeConnector.) (into-array MapReduceFlow [flow]))))
 
-(defn format-tab-tap
-  "Create text delimited Cascading tab."
-  [path opts]
-  (tap/hfs-tap TextDelimited path opts))
-
 (defn -main
   "Download Kepler FITS files, decode and stitch quarters together."
   [& args]
@@ -59,13 +55,9 @@
              ["--jar" "Path to python jar"]
              )]
     (let [[input-path output-path] remaining
-          input-tap (format-tab-tap input-path
-                                    :fields [["kic_id" String
-                                              "quarter" String]])
-          output-tap (format-tab-tap output-path
-                                     :fields [["kic_id" String]
-                                              ["all_quarters" String]
-                                              ["flux" String]])
+          ;https://groups.google.com/forum/#!msg/cascalog-user/t0LsCp3hxiQ/KpTBSs29lN0J
+          input-tap (lfs-delimited input-path)
+          output-tap (lfs-delimited output-path)
           download-stitch-cascade (download-stitch-q
                                    input-tap output-tap
                                    (opts :python) (opts :jar))]

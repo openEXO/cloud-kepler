@@ -25,7 +25,7 @@
   :hadoop-config.custom ["-m" "mapred.tasktracker.map.tasks.maximum=8"])
 
 (defstep download-stitch
-  :main-class "cloud-kepler.hadoop.download_stitch"
+  :main-class "cloud_kepler.hadoop.download_stitch"
   :step-name "Downoload FITS files and stitch quarters"
   :remote-kic-file "${data-uri}/kic-input.txt"
   :upload ["${kid-input}" :to "${remote-kic-file}"]
@@ -33,7 +33,7 @@
   :local {:hadoop-env {"HADOOP_HEAPSIZE" "2048"}
           :python-jar nil
           :num-map-tasks "1"}
-  :args.python "${python-interpreter}"
+  :args.python "${python}"
   :args.jar "${python-jar}"
   :args.positional ["${remote-kic-file}" "${output-path}"])
 
