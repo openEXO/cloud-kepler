@@ -17,6 +17,7 @@
 (defcluster cloud-kepler-cluster
   :num-instances 2
   :spot-task-group "c1.xlarge,75%,10"
+  :jar-src-path "clj/cloud-kepler/cloud-kepler-1.0.0-SNAPSHOT-standalone.jar"
   :app "cloud-kepler"
   :keypair "only_local"
   :slave-instance-type "c1.xlarge"
