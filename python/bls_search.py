@@ -143,7 +143,32 @@ def bls_search(flux_array, minper, maxper, mindur, maxdur, nsearch,
     http://keplergo.arc.nasa.gov/ContributedSoftwareKepbls.shtml
     Inputs:
     -------
-    flux_array: numpy array with time and flux axis
+    flux_array =  numpy array with time and flux axis
+    minper = float
+             The shortest trial period on which to search for
+             transits. Units are days.
+    maxper = float
+             The longest trial period on which to search for transits.
+             Units are days.
+    mindur = float
+             For each trial period, the BLS function will be fit to
+             the data by i) iterating upon the epoch of mid-transit in
+             the model, and ii) adjusting the width of the modeled transit.
+             The width is adjusted systematically in step sizes equaling
+             the cadence of the input data. mindur provides a lower limit
+             to the range of transit widths tested. Units are hours.
+    maxdur = float
+             Provides an upper limit to the range of transit widths
+             tested over each trial period. Units are hours.
+    nsearch =integer
+             The number of trial periods to search between the lower
+             bound minper and the upper bound maxper.
+    nbins =  integer
+             Before the BLS transit model is fit to the data, data are
+             folded upon the trail orbital period and then phase binned
+             by calculating the mean flux level within each bin interval.
+             nbins is the number of phase bins in which to store the data
+             before each fit.
     """
     intime = flux_array[0,*]
     indata = flux_array[1,*]
