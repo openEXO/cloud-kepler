@@ -27,3 +27,8 @@ cat {DIRECTORY_WITH_CLOUD_KEPLER}/test/test_q1.txt | python {DIRECTORY_WITH_CLOU
 
 If it starts downloading and spewing base64 encoded numpy arrays, then
 you're good. 
+
+### References
+* Kovacs, G., Zucker, S., & Mazeh, T. 2002, Astronomy & Astrophysics,
+  391, 369 [10.1051/0004-6361:20020802] (http://adsabs.harvard.edu/abs/2002A%26A...391..369K)
+* Still, M., & Barclay, T. 2012, Astrophysics Source Code Library, 8004
