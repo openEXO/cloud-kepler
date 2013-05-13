@@ -20,8 +20,10 @@ python virtualenv.py cloud-kepler --no-site-packages
 pip install pyfits numpy simplejson
 ```
 
-### Test that the basic python code is working
-```cat {DIRECTORY_WITH_CLOUD_KEPLER}/test/test_q1.txt | python {DIRECTORY_WITH_CLOUD_KEPLER}/python/download.py
+Test that the basic python code is working:
 ```
+cat {DIRECTORY_WITH_CLOUD_KEPLER}/test/test_q1.txt | python {DIRECTORY_WITH_CLOUD_KEPLER}/python/download.py
+```
+
 If it starts downloading and spewing base64 encoded numpy arrays, then
 you're good. 
