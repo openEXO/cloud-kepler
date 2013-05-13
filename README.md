@@ -29,6 +29,8 @@ If it starts downloading and spewing base64 encoded numpy arrays, then
 you're good. 
 
 ### References
+* Koch, D.G., Borucki, W.J., Basri, G., et al. 2010, The Astrophysical
+  Journal Letters, 713, L79 [10.1088/2041-8205/713/2/L79](http://adsabs.harvard.edu/abs/2010ApJ...713L..79K)
 * Kovacs, G., Zucker, S., & Mazeh, T. 2002, Astronomy & Astrophysics,
   391, 369 [10.1051/0004-6361:20020802] (http://adsabs.harvard.edu/abs/2002A%26A...391..369K)
 * Still, M., & Barclay, T. 2012, Astrophysics Source Code Library, 8004
