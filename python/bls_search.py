@@ -186,6 +186,7 @@ def bls_search(flux_list, minper, maxper, mindur, maxdur, nsearch,
     intime = flux_array_finite[:,0]
     indata = flux_array_finite[:,1]
     inerr =  flux_array_finite[:,2]
+    print intime
 
     # prepare time series
     work1 = intime - intime[0]
