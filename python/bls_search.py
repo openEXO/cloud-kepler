@@ -12,6 +12,7 @@ import base64
 import logging
 import simplejson
 from zlib import decompress, compress
+import math
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -37,7 +38,7 @@ def compute_weights(work4, work5):
     s = omega * work4
     return s, omega
 
-def compute_maximum_residual_curve(srMax, trialPeriods, transitPhase, intime):
+def compute_maximum_residual_curve(srMax, trialPeriods, transitPhase, transitDuration, intime, nbins):
     bestSr = numpy.max(srMax)
     bestTrial = numpy.nonzero(srMax == bestSr)[0][0]
     srMax /= bestSr
@@ -65,7 +66,7 @@ def iterate_trialp_durations(s, omega, nbins,duration1, duration2,
                 transitPhase[-1] = float((i1 + i2) / 2)
     return srMax, transitDuration, transitPhase
 
-def compute_folded(nbins, work1, work2, inerr, trialFrequency):
+def compute_folded(nbins, work1, work2, inerr, trialFrequency, duration2):
     """
     Compute folded time series with trial period.
     From http://keplergo.arc.nasa.gov/ContributedSoftwareKepbls.shtml
@@ -89,7 +90,7 @@ def compute_folded(nbins, work1, work2, inerr, trialFrequency):
     return work4, work5
 
 def initialize_iteration(srMax, transitDuration, transitPhase, trialPeriod,
-                         mindur, maxdur):
+                         mindur, maxdur, nbins):
     """
     From http://keplergo.arc.nasa.gov/ContributedSoftwareKepbls.shtml.
     """
@@ -115,17 +116,18 @@ def period_iteration(complete, trialPeriods, trialPeriod, srMax,
     From http://keplergo.arc.nasa.gov/ContributedSoftwareKepbls.shtml
     """
     fracComplete = float(complete) / float(len(trialPeriods) - 1) * 100.0
-    txt += 'Trial period = '+ str(int(trialPeriod)) + ' days ['
-    txt += str(int(fracComplete)) + '% complete]'
+    txt = 'Trial period = '+ str(trialPeriod) + ' days ['
+    txt += str(fracComplete) + '% complete]'
     logger.info(txt)
     complete += 1
     #Initialize variables
     srMax, transitDuration, transitPhase, trialFrequency,\
         duration1, duration2, halfHour = initialize_iteration(
-        srMax, transitDuration, transitPhase, trialPeriod, mindur, maxdur)
+        srMax, transitDuration, transitPhase, trialPeriod, mindur, maxdur, nbins)
 
     #Compute folded time series
-    work4, work5 = compute_folded(nbins, work1, work2, inerr, trialFrequency)
+    work4, work5 = compute_folded(nbins, work1, work2, inerr,
+                                  trialFrequency, duration2)
 
     #Compute weights
     s, omega = (work4, work5)
@@ -175,10 +177,15 @@ def bls_search(flux_list, minper, maxper, mindur, maxdur, nsearch,
     """
     flux_array = numpy.array(flux_list)
     flux_array.sort(axis=0)
-    intime = flux_array[:,0]
-    indata = flux_array[:,1]
-    inerr =  flux_array[:,2]
-    print intime
+
+    #Filter out NaNs
+    indata_finite = numpy.isfinite(flux_array[:,1])
+    flux_array_finite = flux_array[indata_finite]
+    print flux_array_finite
+
+    intime = flux_array_finite[:,0]
+    indata = flux_array_finite[:,1]
+    inerr =  flux_array_finite[:,2]
 
     # prepare time series
     work1 = intime - intime[0]
@@ -201,8 +208,9 @@ def bls_search(flux_list, minper, maxper, mindur, maxdur, nsearch,
 
     #Compute final transit statistics
     bestSr, bestTrial, transitDuration, BJD0 = \
-        compute_maximum_residual_curve(srMax, trialPeriods, transitPhase,
-                                       intime)
+        compute_maximum_residual_curve(
+        srMax, trialPeriods, transitPhase,
+        transitDuration, intime, nbins)
     return bestSr, bestTrial, transitDuration, BJD0
 
 def main(separator="\t"):
@@ -211,12 +219,12 @@ def main(separator="\t"):
     """
     from optparse import OptionParser
     parser = OptionParser()
-    parser.add_option("-m","--minper", default=0.5)
-    parser.add_option("-x","--maxper", default=200.)
+    parser.add_option("-m","--minper", default=2.)
+    parser.add_option("-x","--maxper", default=100.)
     parser.add_option("-i","--mindur", default=0.5)
     parser.add_option("-d","--maxdur", default=20.)
-    parser.add_option("-n","--nsearch", default=1000)
-    parser.add_option("-b","--nbins", default=1000)
+    parser.add_option("-n","--nsearch", default=100.)
+    parser.add_option("-b","--nbins", default=100)
     opts, args = parser.parse_args()
 
     # input comes from STDIN (standard input)
