@@ -6,8 +6,12 @@ Still, M., & Barclay, T. (2012).
 This code is a free adaptation of the PyKE library:
 http://keplergo.arc.nasa.gov/PyKE.shtml
 """
+import sys
 import numpy
+import base64
 import logging
+import simplejson
+from zlib import decompress, compress
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -16,15 +20,14 @@ def read_mapper_output(file, separator='\t'):
     for line in file:
         kic, quarters,  flux_string = line.rstrip().split(separator)
         flux_array = simplejson.loads((decompress(base64.b64decode(flux_string))))
-        yield kic, quarters, fits_array
+        yield kic, quarters, flux_array
 
 def check_period(intime, maxper):
     # test period range
     tr = intime[-1] - intime[0]
     if maxper > tr:
-        message = 'ERROR -- KEPBLS: maxper is larger than the time range of the input data'
-        logger.error(message)
-        raise Exception(message)
+        logger.error('ERROR --  maxper %s is larger than the time range of the input data %s',maxper, tr)
+        raise Exception
 
 def compute_weights(work4, work5):
     # calculate weights of folded light curve points
@@ -134,7 +137,7 @@ def period_iteration(complete, trialPeriods, trialPeriod, srMax,
 
     return srMax, transitDuration, transitPhase, complete
 
-def bls_search(flux_array, minper, maxper, mindur, maxdur, nsearch,
+def bls_search(flux_list, minper, maxper, mindur, maxdur, nsearch,
                nbins):
     """
     Perform BLS transit search. Adapted from
@@ -143,7 +146,7 @@ def bls_search(flux_array, minper, maxper, mindur, maxdur, nsearch,
     http://keplergo.arc.nasa.gov/ContributedSoftwareKepbls.shtml
     Inputs:
     -------
-    flux_array =  numpy array with time and flux axis
+    flux_list =  numpy array with time, flux and eflux axis
     minper = float
              The shortest trial period on which to search for
              transits. Units are days.
@@ -170,9 +173,12 @@ def bls_search(flux_array, minper, maxper, mindur, maxdur, nsearch,
              nbins is the number of phase bins in which to store the data
              before each fit.
     """
-    intime = flux_array[0,*]
-    indata = flux_array[1,*]
-    inerr = flux_array[2,*]
+    flux_array = numpy.array(flux_list)
+    flux_array.sort(axis=0)
+    intime = flux_array[:,0]
+    indata = flux_array[:,1]
+    inerr =  flux_array[:,2]
+    print intime
 
     # prepare time series
     work1 = intime - intime[0]
@@ -206,18 +212,19 @@ def main(separator="\t"):
     from optparse import OptionParser
     parser = OptionParser()
     parser.add_option("-m","--minper", default=0.5)
-    parser.add_option("-m","--maxper", default=200.)
-    parser.add_option("-m","--mindur", default=0.5)
-    parser.add_option("-m","--maxdur", default=20.)
-    parser.add_option("-m","--nsearch", default=1000)
-    parser.add_option("-m","--nbins", default=1000)
+    parser.add_option("-x","--maxper", default=200.)
+    parser.add_option("-i","--mindur", default=0.5)
+    parser.add_option("-d","--maxdur", default=20.)
+    parser.add_option("-n","--nsearch", default=1000)
+    parser.add_option("-b","--nbins", default=1000)
     opts, args = parser.parse_args()
-    
+
     # input comes from STDIN (standard input)
     data = read_mapper_output(sys.stdin, separator=separator)
-    for kic, quarters, fits_array in data:
+    for kic, quarters, flux_array in data:
         bestSr, bestTrial, transitDuration, BJD0 = bls_search(
-            flux_array, minper, maxper, mindur, maxdur, nsearch, nbins)
+            flux_array, opts.minper, opts.maxper, opts.mindur, opts.maxdur,
+            opts.nsearch, opts.nbins)
         print kic, bestSr, bestTrial, transitDuration, BJD0
 
 if __name__ == "__main__":
