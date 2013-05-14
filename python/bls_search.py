@@ -43,7 +43,7 @@ def compute_maximum_residual_curve(srMax, trialPeriods, transitPhase, transitDur
     bestTrial = numpy.nonzero(srMax == bestSr)[0][0]
     srMax /= bestSr
     transitDuration *= trialPeriods / 24.0
-    BJD0 = numpy.array(transitPhase * trialPeriods / nbins,dtype='float64') + intime[0] - 2454833.0
+    BJD0 = numpy.array(transitPhase * trialPeriods / nbins,dtype='float64') + intime[0] + 2454833.0
     return bestSr, bestTrial, transitDuration, BJD0
 
 def iterate_trialp_durations(s, omega, nbins,duration1, duration2,
@@ -54,12 +54,14 @@ def iterate_trialp_durations(s, omega, nbins,duration1, duration2,
     """
     for i1 in range(nbins):
         # iterate through transit durations
-        for duration in range(duration1,duration2+1,int(halfHour)):
+        for duration in range(duration1, duration2 + 1,
+                              int(halfHour)):
             # calculate maximum signal residue
             i2 = i1 + duration
             sr1 = numpy.sum(numpy.power(s[i1:i2],2))
             sr2 = numpy.sum(omega[i1:i2])
-            sr = math.sqrt(sr1 / (sr2 * (1.0 - sr2)))
+            #sr = math.sqrt(sr1 / (sr2 * (1.0 - sr2)))
+            sr = math.sqrt(abs(sr1 / (sr2 * (1.0 - sr2))))
             if sr > srMax[-1]:
                 srMax[-1] = sr
                 transitDuration[-1] = float(duration)
@@ -181,12 +183,10 @@ def bls_search(flux_list, minper, maxper, mindur, maxdur, nsearch,
     #Filter out NaNs
     indata_finite = numpy.isfinite(flux_array[:,1])
     flux_array_finite = flux_array[indata_finite]
-    print flux_array_finite
 
     intime = flux_array_finite[:,0]
     indata = flux_array_finite[:,1]
     inerr =  flux_array_finite[:,2]
-    print intime
 
     # prepare time series
     work1 = intime - intime[0]
@@ -224,7 +224,7 @@ def main(separator="\t"):
     parser.add_option("-x","--maxper", default=100.)
     parser.add_option("-i","--mindur", default=0.5)
     parser.add_option("-d","--maxdur", default=20.)
-    parser.add_option("-n","--nsearch", default=100.)
+    parser.add_option("-n","--nsearch", default=1000.)
     parser.add_option("-b","--nbins", default=100)
     opts, args = parser.parse_args()
 
