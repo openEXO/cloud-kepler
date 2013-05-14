@@ -38,13 +38,15 @@ def compute_weights(work4, work5):
     s = omega * work4
     return s, omega
 
-def compute_maximum_residual_curve(srMax, trialPeriods, transitPhase, transitDuration, intime, nbins):
+def compute_maximum_residual_curve(srMax, trialPeriods, transitPhase,
+                                   transitDuration, intime, nbins):
     bestSr = numpy.max(srMax)
     bestTrial = numpy.nonzero(srMax == bestSr)[0][0]
     srMax /= bestSr
     transitDuration *= trialPeriods / 24.0
-    BJD0 = numpy.array(transitPhase * trialPeriods / nbins,dtype='float64') + intime[0] + 2454833.0
-    return bestSr, bestTrial, transitDuration, BJD0
+    BJD0 = numpy.array(transitPhase * trialPeriods / nbins,dtype='float64') \
+        + intime[0] + 2454833.0
+    return bestSr, srMax, bestTrial, transitDuration, BJD0
 
 def iterate_trialp_durations(s, omega, nbins,duration1, duration2,
                              halfHour, srMax, transitDuration, transitPhase):
@@ -208,11 +210,11 @@ def bls_search(flux_list, minper, maxper, mindur, maxdur, nsearch,
             maxdur, work1, work2, inerr)
 
     #Compute final transit statistics
-    bestSr, bestTrial, transitDuration, BJD0 = \
+    bestSr, srmax, bestTrial, transitDuration, BJD0 = \
         compute_maximum_residual_curve(
         srMax, trialPeriods, transitPhase,
         transitDuration, intime, nbins)
-    return bestSr, bestTrial, transitDuration, BJD0
+    return bestSr, srmax, bestTrial,trialPeriods, transitDuration, BJD0
 
 def main(separator="\t"):
     """
@@ -220,21 +222,21 @@ def main(separator="\t"):
     """
     from optparse import OptionParser
     parser = OptionParser()
-    parser.add_option("-m","--minper", default=2.)
-    parser.add_option("-x","--maxper", default=100.)
-    parser.add_option("-i","--mindur", default=0.5)
-    parser.add_option("-d","--maxdur", default=20.)
-    parser.add_option("-n","--nsearch", default=1000.)
+    parser.add_option("-m","--minper", default=39.5)
+    parser.add_option("-x","--maxper", default=40.5)
+    parser.add_option("-i","--mindur", default=1.0)
+    parser.add_option("-d","--maxdur", default=12.0)
+    parser.add_option("-n","--nsearch", default=100.)
     parser.add_option("-b","--nbins", default=100)
     opts, args = parser.parse_args()
 
     # input comes from STDIN (standard input)
     data = read_mapper_output(sys.stdin, separator=separator)
     for kic, quarters, flux_array in data:
-        bestSr, bestTrial, transitDuration, BJD0 = bls_search(
+        bestSr, srmax, bestTrial,trialPeriods, transitDuration, BJD0 = bls_search(
             flux_array, opts.minper, opts.maxper, opts.mindur, opts.maxdur,
             opts.nsearch, opts.nbins)
-        print kic, bestSr, bestTrial, transitDuration, BJD0
+        print kic, bestSr, trialPeriods[bestTrial], srmax, transitDuration, BJD0
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
