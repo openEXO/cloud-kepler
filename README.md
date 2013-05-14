@@ -18,8 +18,8 @@ More on Amazon Elasctic Map-Reduce and Hadoop:
 
 
 
-### Set-up
-# Python and Virtualenv setup
+# Set-up
+## Python and Virtualenv setup
 ```
 cd ~/temp
 curl -L -o virtualenv.py https://raw.github.com/pypa/virtualenv/master/virtualenv.py
@@ -38,15 +38,15 @@ cat {DIRECTORY_WITH_CLOUD_KEPLER}/test/test_q1.txt | python {DIRECTORY_WITH_CLOU
 If it starts downloading and spewing base64 encoded numpy arrays, then
 you're good. 
 
-# Hadoop set- up
+## Hadoop set- up
 TODO
 
-# Lein setup
+## Lein setup
 TODO
 
-# LEMUR set-up 
+## LEMUR set-up 
 
-### References
+# References
 * Koch, D.G., Borucki, W.J., Basri, G., et al. 2010, The Astrophysical
   Journal Letters, 713, L79 [10.1088/2041-8205/713/2/L79](http://adsabs.harvard.edu/abs/2010ApJ...713L..79K)
 * Kovacs, G., Zucker, S., & Mazeh, T. 2002, Astronomy & Astrophysics,
