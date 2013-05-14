@@ -199,6 +199,29 @@ def bls_search(flux_array, minper, maxper, mindur, maxdur, nsearch,
                                        intime)
     return bestSr, bestTrial, transitDuration, BJD0
 
+def main(separator="\t"):
+    """
+    Run BLS search.
+    """
+    from optparse import OptionParser
+    parser = OptionParser()
+    parser.add_option("-m","--minper", default=0.5)
+    parser.add_option("-m","--maxper", default=200.)
+    parser.add_option("-m","--mindur", default=0.5)
+    parser.add_option("-m","--maxdur", default=20.)
+    parser.add_option("-m","--nsearch", default=1000)
+    parser.add_option("-m","--nbins", default=1000)
+    opts, args = parser.parse_args()
+    
+    # input comes from STDIN (standard input)
+    data = read_mapper_output(sys.stdin, separator=separator)
+    for kic, quarters, fits_array in data:
+        bestSr, bestTrial, transitDuration, BJD0 = bls_search(
+            flux_array, minper, maxper, mindur, maxdur, nsearch, nbins)
+        print kic, bestSr, bestTrial, transitDuration, BJD0
+
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    logger.setLevel(logging.INFO)
     main()
 
