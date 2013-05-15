@@ -48,26 +48,29 @@ def compute_maximum_residual_curve(srMax, trialPeriods, transitPhase,
         + intime[0] + 2454833.0
     return bestSr, srMax, bestTrial, transitDuration, BJD0
 
+
+def sub_iterate(i1,duration ,s ,omega ,srMax ,transitDuration, transitPhase):
+    # calculate maximum signal residue
+    i2 = i1 + duration
+    sr1 = numpy.sum(numpy.power(s[i1:i2],2))
+    sr2 = numpy.sum(omega[i1:i2])
+            #sr = math.sqrt(sr1 / (sr2 * (1.0 - sr2)))
+    sr = math.sqrt(abs(sr1 / (sr2 * (1.0 - sr2))))
+    if sr > srMax[-1]:
+        srMax[-1] = sr
+        transitDuration[-1] = float(duration)
+        transitPhase[-1] = float((i1 + i2) / 2)
+    return srMax, transitDuration, transitPhase
+
 def iterate_trialp_durations(s, omega, nbins,duration1, duration2,
                              halfHour, srMax, transitDuration, transitPhase):
     """
     Iterate through trial period phase.
     From http://keplergo.arc.nasa.gov/ContributedSoftwareKepbls.shtml
     """
-    for i1 in range(nbins):
-        # iterate through transit durations
-        for duration in range(duration1, duration2 + 1,
-                              int(halfHour)):
-            # calculate maximum signal residue
-            i2 = i1 + duration
-            sr1 = numpy.sum(numpy.power(s[i1:i2],2))
-            sr2 = numpy.sum(omega[i1:i2])
-            #sr = math.sqrt(sr1 / (sr2 * (1.0 - sr2)))
-            sr = math.sqrt(abs(sr1 / (sr2 * (1.0 - sr2))))
-            if sr > srMax[-1]:
-                srMax[-1] = sr
-                transitDuration[-1] = float(duration)
-                transitPhase[-1] = float((i1 + i2) / 2)
+    [[sub_iterate(i1, duration,s ,omega,  srMax, transitDuration, transitPhase)
+      for duration in range(duration1, duration2 + 1, int(halfHour))]
+     for i1 in range(nbins)]
     return srMax, transitDuration, transitPhase
 
 def compute_folded(nbins, work1, work2, inerr, trialFrequency, duration2):

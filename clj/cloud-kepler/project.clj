@@ -4,7 +4,7 @@
   :repositories [["spymemcached" "http://files.couchbase.com/maven2"]]
 
   ;:dev-dependencies [[swank-clojure "1.4.0-SNAPSHOT"]]
-  
+
   :dependencies [[org.clojure/clojure "1.3.0"]
 
                  [cascalog "1.8.6"]
@@ -20,4 +20,6 @@
                  ]
 
   ;Define AOT classes
-  :aot [cloud-kepler.hadoop.download-stitch])
+  :aot [cloud-kepler.hadoop.download-stitch
+        cloud-kepler.hadoop.utils
+        cloud-kepler.hadoop.download-stitch])
