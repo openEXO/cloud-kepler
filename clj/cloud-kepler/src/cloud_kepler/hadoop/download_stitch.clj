@@ -9,16 +9,8 @@
   (:use
    cascalog.api
    [clojure.tools.cli :only (cli)]
-   [clojure.string :only (split join)]
    [cascalog.more-taps :only (lfs-delimited)]
    [cloud-kepler.hadoop.utils :as ut])
-  (:import
-   [cascading.scheme Scheme TextDelimited TextLine
-    TextLine$Compress]
-   [org.apache.hadoop.conf Configuration]
-   [org.apache.hadoop.fs
-    FileStatus FileSystem LocalFileSystem
-    FileUtil Path])
   (:gen-class))
 
 (defn -main

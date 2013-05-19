@@ -22,4 +22,4 @@
   ;Define AOT classes
   :aot [cloud-kepler.hadoop.download-stitch
         cloud-kepler.hadoop.utils
-        cloud-kepler.hadoop.download-stitch])
+        cloud-kepler.hadoop.bls])

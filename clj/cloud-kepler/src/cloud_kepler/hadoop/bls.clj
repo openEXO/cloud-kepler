@@ -1,6 +1,11 @@
-(defn bls-q
-  "Run BLS"
-  (:import)
+(ns cloud-kepler.hadoop.bls
+  (:require
+   [cascalog
+    conf])
+  (:use
+   [clojure.tools.cli :only (cli)]
+   [cascalog.more-taps :only (lfs-delimited)]
+   [cloud-kepler.hadoop.utils :as ut])
   (:gen-class))
 
 (defn -main
@@ -20,10 +25,18 @@
           ;;https://groups.google.com/forum/#!msg/cascalog-user/t0LsCp3hxiQ/KpTBSs29lN0J
           input-tap (lfs-delimited input-path)
           output-tap (lfs-delimited output-path)
-          download-stitch-cascade (ut/generalized-python-q
-                                   input-tap output-tap
-                                   (opts :python) (opts :jar)
-                                   "python/bls_search.py" nil
-                                   nil nil
-                                   "bls-search")]
+          bls-options-string (into-array
+                              (concat ["--minper" (opts :minper)
+                                       "--maxper" (opts :maxper)
+                                       "--mindur" (opts :mindur)
+                                       "--maxdur" (opts :maxdur)
+                                       "--nsearch" (opts :nsearch)
+                                       "--nbins" (opts :nbins)
+                                       ]))
+          bls-cascade (ut/generalized-python-q
+                       input-tap output-tap
+                       (opts :python) (opts :jar)
+                       "python/bls_search.py" bls-options-string
+                       nil nil
+                       "bls-search")]
        (.complete bls-cascade))))

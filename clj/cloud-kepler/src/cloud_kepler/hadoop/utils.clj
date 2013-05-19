@@ -3,6 +3,8 @@
    [cascading.flow MapReduceFlow]
    [org.apache.hadoop.streaming StreamJob]
    [cascading.cascade CascadeConnector])
+  (:use
+   [clojure.string :only (split join)])
   (:gen-class))
 
 (defn generalized-python-q
