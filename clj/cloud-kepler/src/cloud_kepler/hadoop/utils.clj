@@ -4,8 +4,13 @@
    [org.apache.hadoop.streaming StreamJob]
    [cascading.cascade CascadeConnector])
   (:use
-   [clojure.string :only (split join)])
+   [clojure.string :only (split join)]
+   [cascalog.more-taps :only (lfs-delimited)])
   (:gen-class))
+
+(defn local-tap
+  [path]
+  (lfs-delimited path))
 
 (defn generalized-python-q
   "Create a generalized mapper and reducer q that calls python streaming

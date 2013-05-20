@@ -1,10 +1,6 @@
 (ns cloud-kepler.hadoop.bls
-  (:require
-   [cascalog
-    conf])
   (:use
    [clojure.tools.cli :only (cli)]
-   [cascalog.more-taps :only (lfs-delimited)]
    [cloud-kepler.hadoop.utils :as ut])
   (:gen-class))
 
@@ -23,8 +19,8 @@
              ["--nbins" "Number of phase bins"])]
     (let [[input-path output-path] remaining
           ;;https://groups.google.com/forum/#!msg/cascalog-user/t0LsCp3hxiQ/KpTBSs29lN0J
-          input-tap (lfs-delimited input-path)
-          output-tap (lfs-delimited output-path)
+          input-tap (ut/local-tap input-path)
+          output-tap (ut/local-tap output-path)
           bls-options-string (into-array
                               (concat ["--minper" (opts :minper)
                                        "--maxper" (opts :maxper)
