@@ -225,12 +225,12 @@ def main(separator="\t"):
     """
     from optparse import OptionParser
     parser = OptionParser()
-    parser.add_option("-m","--minper", default=39.5)
-    parser.add_option("-x","--maxper", default=40.5)
-    parser.add_option("-i","--mindur", default=1.0)
-    parser.add_option("-d","--maxdur", default=12.0)
-    parser.add_option("-n","--nsearch", default=100.)
-    parser.add_option("-b","--nbins", default=100)
+    parser.add_option("-m","--minper")
+    parser.add_option("-x","--maxper")
+    parser.add_option("-i","--mindur")
+    parser.add_option("-d","--maxdur")
+    parser.add_option("-n","--nsearch")
+    parser.add_option("-b","--nbins")
     opts, args = parser.parse_args()
 
     # input comes from STDIN (standard input)
@@ -239,10 +239,9 @@ def main(separator="\t"):
         bestSr, srmax, bestTrial,trialPeriods, transitDuration, BJD0 = bls_search(
             flux_array, opts.minper, opts.maxper, opts.mindur, opts.maxdur,
             opts.nsearch, opts.nbins)
-        print kic, bestSr, trialPeriods[bestTrial], srmax, transitDuration, BJD0
+        print "\t".join(map(str,[kic, bestSr, trialPeriods[bestTrial], srmax, transitDuration, BJD0]))
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logger.setLevel(logging.INFO)
     main()
-

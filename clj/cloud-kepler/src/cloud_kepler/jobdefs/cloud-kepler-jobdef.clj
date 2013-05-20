@@ -11,9 +11,9 @@
   [:python-jar "Path to the python jar" nil]
   [:kid-input "Kepler id, quarter input file" nil]
   [:min-per "Minimum planetary ortbital period" 1.5]
-  [:max-per "Maximum planetrary orbital period" 100]
+  [:max-per "Maximum planetrary orbital period" 100.]
   [:min-dur "Minimum duration of transit in hours" 1.5]
-  [:max-dur "Maximum duration of transit in hours" 15]
+  [:max-dur "Maximum duration of transit in hours" 15.]
   [:nsearch "Number of trial periods" 100]
   [:nbins "Number of phase bins" 100])
 
