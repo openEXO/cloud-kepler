@@ -19,11 +19,7 @@
 
 (add-validators
   (val-opts :required [:python :kid-input :python-jar
-<<<<<<< HEAD
-                       :minper :maxper :mindur :maxdur
-=======
                        :min-per :max-per :min-dur :max-dur
->>>>>>> BLS Flow debugging
                        :nsearch :nbins]))
 
 (defcluster cloud-kepler-cluster
