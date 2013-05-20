@@ -27,14 +27,19 @@
         mapper (join " " [python map-script python-mapper-options])
         reduce-script (join "/" [python-anchor python-reducer])
         reducer (join " " [python reduce-script python-reducer-options])
+        stream-args (if (nil? python-reducer)
+                      ["-input"  input
+                       "-output" output
+                       "-mapper" mapper]
+                      ["-input"  input
+                       "-output" output
+                       "-mapper" mapper
+                       "-reducer" reducer])
         job-configuration (StreamJob/createJob
                            (into-array
-                            (concat ["-input"  input
-                                     "-output" output
-                                     "-mapper" mapper
-                                     (when python-reducer
-                                       "-reducer" reducer)]
-                                    ;;(when jar ["-cacheArchive" jar])
-                                    )))
+                            (concat
+                             stream-args
+                             ;;(when jar ["-cacheArchive" jar])
+                             )))
         flow (MapReduceFlow. name-flow job-configuration)]
     (.connect (CascadeConnector.) (into-array MapReduceFlow [flow]))))

@@ -20,6 +20,6 @@
                                    input-tap output-tap
                                    (opts :python) (opts :jar)
                                    "python/download.py" nil
-                                   "python/join-quarters.py" nil
+                                   "python/join_quarters.py" nil
                                    "download-join")]
        (.complete download-stitch-cascade))))

@@ -53,14 +53,15 @@
   :main-class "cloud_kepler.hadoop.bls"
   :step-name "Perform Box Least Square period finding"
   :bls-output-path "${data-uri}/bls-output"
+  :stitched-path "${data-uri}/joined-quarters"
   :args.python "${python}"
   :args.jar "${python-jar}"
-  :args.minper "${minper}"
-  :args.maxper "${maxper}"
-  :args.mindur "${mindur}"
-  :args.maxdur "${maxdur}"
+  :args.minper "${min-per}"
+  :args.maxper "${max-per}"
+  :args.mindur "${min-dur}"
+  :args.maxdur "${max-dur}"
   :args.nsearch "${nsearch}"
   :args.nbins "${nbins}"
   :args.positional ["${stitched-path}" "${bls-output-path}"])
 
-(fire! cloud-kepler-cluster download-stitch)
+(fire! cloud-kepler-cluster download-stitch bls-search)
