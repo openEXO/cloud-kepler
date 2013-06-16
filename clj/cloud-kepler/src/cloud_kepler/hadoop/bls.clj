@@ -21,14 +21,15 @@
           ;;https://groups.google.com/forum/#!msg/cascalog-user/t0LsCp3hxiQ/KpTBSs29lN0J
           input-tap (ut/local-tap input-path)
           output-tap (ut/local-tap output-path)
-          bls-options-string (into-array
-                              (concat ["--minper" (opts :minper)
-                                       "--maxper" (opts :maxper)
-                                       "--mindur" (opts :mindur)
-                                       "--maxdur" (opts :maxdur)
-                                       "--nsearch" (opts :nsearch)
-                                       "--nbins" (opts :nbins)
-                                       ]))
+          bls-options-string (clojure.string/join
+                              " "
+                              ["--minper" (opts :minper)
+                               "--maxper" (opts :maxper)
+                               "--mindur" (opts :mindur)
+                               "--maxdur" (opts :maxdur)
+                               "--nsearch" (opts :nsearch)
+                               "--nbins" (opts :nbins)
+                               ])
           bls-cascade (ut/generalized-python-q
                        input-tap output-tap
                        (opts :python) (opts :jar)

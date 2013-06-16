@@ -25,7 +25,7 @@
 (defcluster cloud-kepler-cluster
   :num-instances 2
   :spot-task-group "c1.xlarge,75%,10"
-  :jar-src-path "clj/cloud-kepler/cloud-kepler-1.0.0-SNAPSHOT-standalone.jar"
+  :jar-src-path "clj/cloud-kepler/target/cloud-kepler-1.0.0-SNAPSHOT-standalone.jar"
 
   :local {:hadoop-env {"HADOOP_HEAPSIZE" "2048"}
           :python-jar "."
