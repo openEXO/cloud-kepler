@@ -237,8 +237,9 @@ def main(separator="\t"):
     data = read_mapper_output(sys.stdin, separator=separator)
     for kic, quarters, flux_array in data:
         bestSr, srmax, bestTrial,trialPeriods, transitDuration, BJD0 = bls_search(
-            flux_array, opts.minper, opts.maxper, opts.mindur, opts.maxdur,
-            opts.nsearch, opts.nbins)
+            flux_array, float(opts.minper), float(opts.maxper), float(opts.mindur),
+            float(opts.maxdur),
+            int(opts.nsearch), int(opts.nbins))
         print "\t".join(map(str,[kic, bestSr, trialPeriods[bestTrial], srmax, transitDuration, BJD0]))
 
 if __name__ == "__main__":
