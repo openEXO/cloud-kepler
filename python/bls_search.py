@@ -146,6 +146,10 @@ def period_iteration(complete, trialPeriods, trialPeriod, srMax,
 
     return srMax, transitDuration, transitPhase, complete
 
+def encode_arr(arr):
+    #64bit encodes numpy arrays
+    return base64.b64encode(compress(simplejson.dumps(arr.tolist())))
+
 def bls_search(flux_list, minper, maxper, mindur, maxdur, nsearch,
                nbins):
     """
@@ -240,7 +244,7 @@ def main(separator="\t"):
             flux_array, float(opts.minper), float(opts.maxper), float(opts.mindur),
             float(opts.maxdur),
             int(opts.nsearch), int(opts.nbins))
-        print "\t".join(map(str,[kic, bestSr, trialPeriods[bestTrial], srmax, transitDuration, BJD0]))
+        print "\t".join(map(str,[kic, bestSr, trialPeriods[bestTrial], encode_arr(srmax), encode_arr(transitDuration), encode_arr(BJD0)]))
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
