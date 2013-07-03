@@ -40,24 +40,67 @@ you're good.
 
 ## Hadoop set- up
 1.install Oracle VM VirtualBox 4.2.14 from VirtualBox-4.2.14-86644-win from https://www.virtualbox.org/wiki/Downloads
+
 1.a. at each point where it asked to install specific hardware. I allow it to install.
+
 2. extract cloudera-quickstart-demo-vm-4.3.0-virtualbox.tar.gz using 7zip. https://ccp.cloudera.com/display/SUPPORT/Cloudera+QuickStart+VM
+
 3. then enter the created folder and extract cloudera-quickstart-demo-vm-4.3.0-virtualbox.tar using 7zip
+
 3.a. end up with cloudera-quickstart-demo-vm.ovf and cloudera-quickstart-demo-vm.vmdk in whatever folder you extracted to
+
 4. open up Oracle VM VirtualBox Manager
+
 5. select the New icon, Create Virtual Machine window boots up.
+
 6. Press Hide Description to get all options at once.
+
 7. For operating system, select Linux and Ubuntu
+
 8. For memory size, select 4096 MB
+
 9. For Hard Drive, select "Use an existing virtual hard drive and pathed to cloudera-quickstart-demo-vm.vmdk
+
 10. Press Create. Virtual machine now selectable in the main window on virtualbox manager.
+
 11. Press the Settings button, opens the settings window.
+
 12. Choose the system tab
+
 13. Change chipset to ICH9, make sure "Enable IO APIC" is checked.
+
 14. Select it and pressed Start, boot begins.
+
 14.a. this part takes a little while.
+
 14.b. However, if it gets stuck on any one step for more than 15 or 20 minutes, you can assume something is wrong.
+
 15. Eventually the boot sequence will end and you will see a desktop in your virtual machine. Success!
+```
+
+Wordcount Example:
+
+1. Inside your virtual machine, go to the Cloudera Hadoop Tutorial at http://www.cloudera.com/content/cloudera-content/cloudera-docs/HadoopTutorial/CDH4/Hadoop-Tutorial/ht_topic_5_1.html
+
+2. Copy the source code for WordCount and past it into the gedit text editor. Save as WordCount.java (caps matter) in the cloudera's home folder.
+
+3. Per the instructions there, open terminal, cd to the home directory, then run "mkdir wordcount_classes".
+
+4. Then run "javac -cp /usr/lib/hadoop/*:/usr/lib/hadoop/client-0.20/* -d wordcount_classes WordCount.java
+
+5. jar -cvf wordcount.jar -C wordcount_classes/
+
+6. echo "Hello World Bye World" > file0
+
+7. echo "Hello Hadoop Goodbye Hadoop" > file1
+
+8. hadoop fs -mkdir /user/cloudera /user/cloudera/wordcount /user/cloudera/wordcount/input
+
+9. hadoop fs -put file* /user/cloudera/wordcount/input
+
+10. hadoop jar wordcount.jar org.myorg.WordCount /user/cloudera/wordcount/input /user/cloudera/wordcount/output
+
+11. Encounter an error unzipping the JAR file on that last step. Become confused.
 ```
 
 ## Lein setup
