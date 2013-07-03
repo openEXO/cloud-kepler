@@ -76,7 +76,7 @@ you're good.
 14.b. However, if it gets stuck on any one step for more than 15 or 20 minutes, you can assume something is wrong.
 
 15. Eventually the boot sequence will end and you will see a desktop in your virtual machine. Success!
-```
+
 
 Wordcount Example:
 
@@ -101,7 +101,7 @@ Wordcount Example:
 10. hadoop jar wordcount.jar org.myorg.WordCount /user/cloudera/wordcount/input /user/cloudera/wordcount/output
 
 11. Encounter an error unzipping the JAR file on that last step. Become confused.
-```
+
 
 ## Lein setup
 TODO
