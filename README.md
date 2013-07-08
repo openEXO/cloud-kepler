@@ -86,33 +86,39 @@ WordCount Example:
 
 3. Per the instructions there, open terminal, cd to the home directory, then run "mkdir wordcount_classes".
 
-4. Then run "javac -cp /usr/lib/hadoop/*:/usr/lib/hadoop/client-0.20/* -d wordcount_classes WordCount.java
+4. Then run "javac -cp /usr/lib/hadoop/*:/usr/lib/hadoop/client-0.20/* -d wordcount_classes WordCount.java" to put some important stuff in it
 
-5. right click on the wordcount_classes folder and select compress. Choose .jar as the file format
+5. right click on the wordcount_classes folder you made (it will be in the home directory) and select compress. Choose .jar as the file format
 
-6. rename your new .jar file wordcount.jar
+6. rename your new .jar file wordcount.jar, now you have a jar file from which you can hadoop wordcount.
 
-7. echo "Hello World Bye World" > file0
+6. echo "Hello World Bye World" > file0
 
-8. echo "Hello Hadoop Goodbye Hadoop" > file1
+7. echo "Hello Hadoop Goodbye Hadoop" > file1, these commands generate your input files.
 
-9. hadoop fs -mkdir /user/cloudera /user/cloudera/wordcount /user/cloudera/wordcount/input
+8. run 'hadoop fs -mkdir /user/cloudera /user/cloudera/wordcount /user/cloudera/wordcount/input'
 
-10. hadoop fs -put file* /user/cloudera/wordcount/input
+9. then 'hadoop fs -put file* /user/cloudera/wordcount/input' this sets up your input directory
 
-11. hadoop jar wordcount.jar org.myorg.WordCount /user/cloudera/wordcount/input /user/cloudera/wordcount/output
+10. 'hadoop jar wordcount.jar org.myorg.WordCount /user/cloudera/wordcount/input /user/cloudera/wordcount/output' to run hadoop
 
-12. Encounter an error connecting to localhost when hadoop attempts to run.
+11. According to the Cloudera Tutoria, this should be all you need to do, but I got an error message here, so everything is not quite right yet.
 
-the guide here looks like it may be of some use
+12. When you first log onto the virtual machine, it should begin with a firefox window open to some kind of cloudera page. Click the Cloudera Manager link.
 
-http://www.michael-noll.com/tutorials/running-hadoop-on-ubuntu-linux-single-node-cluster/
+13. Enter 'admin' and 'admin' as a username and password to access it.
 
-however, I am encountering problems setting up a passwordless ssh key per its instructions.
+14. Now you can see the health of your setup's various components. mapreduce1 will probably be listed as in poor health. click on it
 
-key generation occurs without error, but an attempt to ssh into localhost requests a password, which it should not do.
+15. You should see that the jobtracker is the problem. return to terminal and type 'sudo -u hdfs hadoop fs -mkdir /tmp/mapred/system'
 
-resolution of this might lead to a smoothly running wordcount.
+16. then 'sudo -u hdfs hadoop fs -chown mapred:hadoop /tmp/mapred/system'
+
+17. then restart jobtracker by clicking instances the instances tab, clicking on jobtracker, clicking to the processes tab, selecting the actions tab in the corner, and selecting restart.
+
+18. after it restarts, trying to run hadoop again will still fail, but it should give a different error message and jobtracker should still appear in good health on the Cloudera Manager after the job fails.
+
+That's all I've got so far, looks like there's a little further to go.
 
 ## Lein setup
 TODO
