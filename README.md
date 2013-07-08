@@ -78,7 +78,7 @@ you're good.
 15. Eventually the boot sequence will end and you will see a desktop in your virtual machine. Success!
 
 
-Wordcount Example:
+WordCount Example:
 
 1. Inside your virtual machine, go to the Cloudera Hadoop Tutorial at http://www.cloudera.com/content/cloudera-content/cloudera-docs/HadoopTutorial/CDH4/Hadoop-Tutorial/ht_topic_5_1.html
 
@@ -88,20 +88,31 @@ Wordcount Example:
 
 4. Then run "javac -cp /usr/lib/hadoop/*:/usr/lib/hadoop/client-0.20/* -d wordcount_classes WordCount.java
 
-5. jar -cvf wordcount.jar -C wordcount_classes/
+5. right click on the wordcount_classes folder and select compress. Choose .jar as the file format
 
-6. echo "Hello World Bye World" > file0
+6. rename your new .jar file wordcount.jar
 
-7. echo "Hello Hadoop Goodbye Hadoop" > file1
+7. echo "Hello World Bye World" > file0
 
-8. hadoop fs -mkdir /user/cloudera /user/cloudera/wordcount /user/cloudera/wordcount/input
+8. echo "Hello Hadoop Goodbye Hadoop" > file1
 
-9. hadoop fs -put file* /user/cloudera/wordcount/input
+9. hadoop fs -mkdir /user/cloudera /user/cloudera/wordcount /user/cloudera/wordcount/input
 
-10. hadoop jar wordcount.jar org.myorg.WordCount /user/cloudera/wordcount/input /user/cloudera/wordcount/output
+10. hadoop fs -put file* /user/cloudera/wordcount/input
 
-11. Encounter an error unzipping the JAR file on that last step. Become confused.
+11. hadoop jar wordcount.jar org.myorg.WordCount /user/cloudera/wordcount/input /user/cloudera/wordcount/output
 
+12. Encounter an error connecting to localhost when hadoop attempts to run.
+
+the guide here looks like it may be of some use
+
+http://www.michael-noll.com/tutorials/running-hadoop-on-ubuntu-linux-single-node-cluster/
+
+however, I am encountering problems setting up a passwordless ssh key per its instructions.
+
+key generation occurs without error, but an attempt to ssh into localhost requests a password, which it should not do.
+
+resolution of this might lead to a smoothly running wordcount.
 
 ## Lein setup
 TODO
