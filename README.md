@@ -86,11 +86,9 @@ WordCount Example:
 
 3. Per the instructions there, open terminal, cd to the home directory, then run "mkdir wordcount_classes".
 
-4. Then run "javac -cp /usr/lib/hadoop/*:/usr/lib/hadoop/client-0.20/* -d wordcount_classes WordCount.java" to put some important stuff in it
+4. Then run "javac -cp /usr/lib/hadoop/*:/usr/lib/hadoop/client-0.20/* -d wordcount_classes WordCount.java" to set up an executable map reduce from that java file.
 
-5. right click on the wordcount_classes folder you made (it will be in the home directory) and select compress. Choose .jar as the file format
-
-6. rename your new .jar file wordcount.jar, now you have a jar file from which you can hadoop wordcount.
+5. right click on the wordcount_classes folder you made (it will be in the home directory) and select compress. Choose .jar as the file format and wordcount as filename.
 
 6. echo "Hello World Bye World" > file0
 
@@ -100,7 +98,7 @@ WordCount Example:
 
 9. then 'hadoop fs -put file* /user/cloudera/wordcount/input' this sets up your input directory
 
-10. 'hadoop jar wordcount.jar org.myorg.WordCount /user/cloudera/wordcount/input /user/cloudera/wordcount/output' to run hadoop
+10. 'hadoop jar wordcount.jar org.myorg.WordCount /user/cloudera/wordcount/input output' to run hadoop
 
 11. According to the Cloudera Tutoria, this should be all you need to do, but I got an error message here, so everything is not quite right yet.
 
@@ -116,9 +114,25 @@ WordCount Example:
 
 17. then restart jobtracker by clicking instances the instances tab, clicking on jobtracker, clicking to the processes tab, selecting the actions tab in the corner, and selecting restart.
 
-18. after it restarts, trying to run hadoop again will still fail, but it should give a different error message and jobtracker should still appear in good health on the Cloudera Manager after the job fails.
+18. after it restarts, repeat step 10 to run hadoop again.
 
-That's all I've got so far, looks like there's a little further to go.
+19. call 'hadoop fs -ls', an output folder should have appeared in the hadoop fs home directory.
+
+20. call 'hadoop fs -cat output/part-00000', this will print the output of your wordcount.
+
+It should look like this:
+
+Bye 1
+
+Goodbye 1
+
+Hadoop 2
+
+Hello 2
+
+World 2
+
+ps: future calls to hadoop will fail unless you delete the 'output' directory, or set hadoop to create a differently named output folder.
 
 ## Lein setup
 TODO
