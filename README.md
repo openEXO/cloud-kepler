@@ -139,6 +139,38 @@ TODO
 
 ## LEMUR set-up 
 
+hop on your cloudera vm (or whatever machine you have hadoop up and running on) and go to https://github.com/TheClimateCorporation/lemur
+
+lemur can be downloaded from  http://download.climate.com/lemur/releases/lemur-1.3.1.tgz. follow that link and the file should appear in your download folder.
+
+extract it, and then put it wherever you want it to be, doesn't even matter
+
+the weird permissions and filesystem of the cloudera vm make this next part sort of annoying. anyway, open up terminal and follow along.
+
+'echo $HOME' this should print /home/cloudera. We can't access what we need to access from this directory so we need to go a little higher.
+
+'export $HOME=/home' and then 'cd' to get yourself into the higher directory.
+
+then 'ls -a' to see all folders in home. 'cd ..' takes you where you need to go.
+
+'cd etc'
+
+'cd profile.d' this is the folder where we need to set up our new environment variable.
+
+'sudo vim lemur.sh' initializes the file.
+
+on the first line of the file write 'export LEMUR_HOME={wherever you saved your lemur file}' (in my case /home/cloudera/Desktop/lemur).
+
+on the second line of the file write 'export LEMUR_AWS_ACCESS_KEY={your aws access key}'
+
+on the third line of the file write 'export LEMUR_AWS_SECRET_KEY={your aws secret key}'
+
+on the fourth line of the file write 'export PATH=$PATH:$LEMUR_HOME/bin'
+
+save the file and exit.
+
+if you re-enter terminal, you will now be able to call lemur from it. I think that means it works.
+
 # References
 * Koch, D.G., Borucki, W.J., Basri, G., et al. 2010, The Astrophysical
   Journal Letters, 713, L79 [10.1088/2041-8205/713/2/L79](http://adsabs.harvard.edu/abs/2010ApJ...713L..79K)
