@@ -73,12 +73,6 @@ def main():
             for x in xrange(n):
                 ppb[int(bin[x])] += 1
                 binFlx[int(bin[x])] += fluxSet[x]
-            if int(trial) == 4:
-                print 'dicks'
-                print nbins
-                print 'cocks'
-                for x in ppb:
-                    print x
 	#prepare iteration
             srMax = numpy.append(srMax, numpy.nan)
             transitDuration = numpy.append(transitDuration, numpy.nan)
