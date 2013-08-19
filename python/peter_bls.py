@@ -61,8 +61,10 @@ def main():
 #period iteration
 	#make sure bins not greater than data points in period
             nbins = int(opts.nbins)
-            if 1 /(trial * .020833) + 1 < nbins:
-                nbins = int(1 / (trial * .020833) + 1)
+            if 1 /(trial * .02044) + 1 < nbins:
+    #Kepler takes a data point every 1766 seconds or .02044 days.
+	#from Section 2.1 of the Kepler Instrument Handbook. http://archive.stsci.edu/kepler/manuals/KSCI-19033-001.pdf
+                nbins = int(1 / (trial * .02044) + 1)
                 mindur = max(int(qmin * nbins),1)
                 maxdur = int(qmax * nbins) + 1
 	#bin data points
