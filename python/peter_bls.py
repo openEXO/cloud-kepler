@@ -15,7 +15,7 @@ def read_mapper_output(file, separator='\t'):
         kic, quarters,  flux_string = line.rstrip().split(separator)
         flux_array = simplejson.loads((decompress(base64.b64decode(flux_string))))
         yield kic, quarters, flux_array
-		
+
 def main():
 #set up options and collect input parameters
     from optparse import OptionParser
@@ -61,10 +61,10 @@ def main():
 #period iteration
 	#make sure bins not greater than data points in period
             nbins = int(opts.nbins)
-            if 1 /(trial * .02044) + 1 < nbins:
-    #Kepler takes a data point every 1766 seconds or .02044 days.
-	#from Section 2.1 of the Kepler Instrument Handbook. http://archive.stsci.edu/kepler/manuals/KSCI-19033-001.pdf
-                nbins = int(1 / (trial * .02044) + 1)
+            if 1 /(trial * .020833) + 1 < nbins:
+                #Kepler takes a data point every 1766 seconds or .02044 days.
+	            #from Section 2.1 of the Kepler Instrument Handbook. http://archive.stsci.edu/kepler/manuals/KSCI-19033-001.pdf
+                nbins = int(1 / (trial * .020833) + 1)
                 mindur = max(int(qmin * nbins),1)
                 maxdur = int(qmax * nbins) + 1
 	#bin data points
@@ -83,7 +83,7 @@ def main():
             for i1 in range(nbins):
                 s = 0
                 r = 0
-                for i2 in range(i1, maxdur+1):
+                for i2 in range(i1, i1 + maxdur + 1):
                     s += binFlx[i2%nbins]
                     r += ppb[i2%nbins]
                     if i2 - i1 + 1 >= mindur and r >= rmin:
@@ -94,10 +94,13 @@ def main():
                             transitPhase[-1] = i1
 #format output
         srMax = abs(srMax)**.5
+        output = [(trialFreqs[x],srMax[x]) for x in range(nbins)]
         bestSr = numpy.max(srMax)
+        transitPhase /= nbins
+		#format transit duration (how, do I save points?)
         t = numpy.nonzero(srMax == bestSr)
-        print "\t".join(map(str,[kic, bestSr, trialFreqs[t], transitPhase[t], transitDuration[t], srMax]))
-		
+        print "\t".join(map(str,[kic, srMax transitPhase, transitDuration]))
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logger.setLevel(logging.INFO)
