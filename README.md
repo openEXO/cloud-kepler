@@ -142,6 +142,10 @@ It is worth noting that Hadoop won't work unless the directory you set as your o
 ## Lein setup
 Note that this readme assumes a cloudera vm distribution of hadoop.
 
+You can find Lein at https://github.com/technomancy/leiningen
+
+Download the script from https://raw.github.com/technomancy/leiningen/stable/bin/lein and place it wherever you want
+
 ```
 export $HOME=/home
 cd
@@ -153,6 +157,12 @@ sudo vim lein.sh
 On one line of the file write 'export PATH=$PATH:{wherever your lein file is located}` (in my case /home/cloudera/Desktop)
 
 Save the file and exit.
+
+Exit and reenter terminal to get back to you home directory.
+
+```
+chmod 755 {location of lein}
+```
 
 Lein should now be functioning, call 'lein' in terminal to test.
 
