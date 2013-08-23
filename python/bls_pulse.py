@@ -26,11 +26,16 @@ def main():
     parser.add_option("-i","--qmin")
     parser.add_option("-q","--qmax")
     parser.add_option("-b","--nbins")
+    parser.add_option("-p","--per"
     opts, args = parser.parse_args()
+    p = .02044
+    #Kepler takes a data point every 1766 seconds or .02044 days.
+	#from Section 2.1 of the Kepler Instrument Handbook. http://archive.stsci.edu/kepler/manuals/KSCI-19033-001.pdf
     minbin = 5
     qmin = float(opts.qmin)
     qmax = float(opts.qmax)
     nbins = int(opts.nbins)
+    per = float(opts.per)
     mindur = max(int(qmin * nbins),1)
     maxdur = int(qmax * nbins) + 1
     input = read_mapper_output(sys.stdin)
@@ -45,31 +50,40 @@ def main():
         rmin = max(int(n * qmin),minbin)
         timeSet = time - time[0]
         fluxSet = flux - numpy.mean(flux)
-        t = timeSet[-1] + .02044
+        segments = [timeSet[x:x+int(per/p)] for x in xrange(0,len(timeSet),int(per/p))]
+        for seg in segments:
 #bin data points
-        ppb = numpy.zeros(nbins)
-        binFlx = numpy.zeros(nbins)
-        phase = timeSet/t - numpy.floor(timeSet/t)
-        bin = numpy.floor(phase * nbins)
-        for x in xrange(n):
-            ppb[int(bin[x])] += 1
-            binFlx[int(bin[x])] += fluxSet[x]
+            seg = numpy.array(seg)
+            n = seg.size()
+	#make sure bins not greater than data points in period
+            nbins = int(opts.nbins)
+            if n < nbins:
+                nbins = n
+                mindur = max(int(qmin * nbins),1)
+                maxdur = int(qmax * nbins) + 1
+            ppb = numpy.zeros(nbins)
+            binFlx = numpy.zeros(nbins)
+            phase = seg/per - numpy.floor(seg/per)
+            bin = numpy.floor(phase * nbins)
+            for x in xrange(n):
+                ppb[int(bin[x])] += 1
+                binFlx[int(bin[x])] += fluxSet[x]
 #determine srMax
-        for i1 in range(nbins):
-            s = 0
-            r = 0
-            for i2 in range(i1, maxdur+1):
-                s += binFlx[i2%nbins]
-                r += ppb[i2%nbins]
-                if i2 - i1 + 1 >= mindur and r >= rmin:
-                    sr = s**2 / (r * (n - r))
-                    if sr > srMax or numpy.isnan(srMax):
-                        srMax = sr
-                        transitDuration = i2 - i1 + 1
-                        transitPhase = i1
+            for i1 in range(nbins):
+                s = 0
+                r = 0
+                for i2 in range(i1, i1 + maxdur + 1):
+                    s += binFlx[i2%nbins]
+                    r += ppb[i2%nbins]
+                    if i2 - i1 > mindur and r >= rmin:
+                        sr = s**2 / (r * (n - r))
+                        if sr > srMax or numpy.isnan(srMax):
+                            srMax = sr
+                            transitDuration = i2 - i1 + 1
+                            transitPhase = i1
 #format output
         srMax = srMax**.5
-        print "\t".join(map(str,[kic, srMaxx transitPhase, transitDuration]))
+        print "\t".join(map(str,[kic, srMax transitPhase, transitDuration]))
 		
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

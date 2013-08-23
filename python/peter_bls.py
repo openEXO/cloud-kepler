@@ -27,6 +27,9 @@ def main():
     parser.add_option("-n","--nsearch")
     parser.add_option("-b","--nbins")
     opts, args = parser.parse_args()
+#Kepler takes a data point every 1766 seconds or .02044 days.
+#from Section 2.1 of the Kepler Instrument Handbook. http://archive.stsci.edu/kepler/manuals/KSCI-19033-001.pdf
+    p = .02044
     minbin = 5
     minper = float(opts.minper)
     maxper = float(opts.maxper)
@@ -61,10 +64,8 @@ def main():
 #period iteration
 	#make sure bins not greater than data points in period
             nbins = int(opts.nbins)
-            if 1 /(trial * .020833) + 1 < nbins:
-                #Kepler takes a data point every 1766 seconds or .02044 days.
-	            #from Section 2.1 of the Kepler Instrument Handbook. http://archive.stsci.edu/kepler/manuals/KSCI-19033-001.pdf
-                nbins = int(1 / (trial * .020833) + 1)
+            if 1 /(trial * p) + 1 < nbins:
+                nbins = int(1 / (trial * p) + 1)
                 mindur = max(int(qmin * nbins),1)
                 maxdur = int(qmax * nbins) + 1
 	#bin data points
@@ -91,15 +92,14 @@ def main():
                         if sr > srMax[-1] or numpy.isnan(srMax[-1]):
                             srMax[-1] = sr
                             transitDuration[-1] = i2 - i1 + 1
-                            transitPhase[-1] = i1
+                            transitPhase[-1] = i1 / nbins
 #format output
         srMax = abs(srMax)**.5
         output = [(trialFreqs[x],srMax[x]) for x in range(nbins)]
         bestSr = numpy.max(srMax)
-        transitPhase /= nbins
 		#format transit duration (how, do I save points?)
         t = numpy.nonzero(srMax == bestSr)
-        print "\t".join(map(str,[kic, srMax transitPhase, transitDuration]))
+        print "\t".join(map(str,[kic, bestSr, trialFreqs[t], transitPhase[t], transitDuration[t]]))
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
