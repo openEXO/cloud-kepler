@@ -26,12 +26,12 @@ def main():
     parser.add_option("-i","--qmin")
     parser.add_option("-q","--qmax")
     parser.add_option("-b","--nbins")
-    parser.add_option("-p","--per"
+    parser.add_option("-p","--per")
+	#per is period that we divide dataset into. Bls pulse should return one best fitting pulse for each subset of length per. units in days as always.
     opts, args = parser.parse_args()
     p = .02044
     #Kepler takes a data point every 1766 seconds or .02044 days.
 	#from Section 2.1 of the Kepler Instrument Handbook. http://archive.stsci.edu/kepler/manuals/KSCI-19033-001.pdf
-    minbin = 5
     qmin = float(opts.qmin)
     qmax = float(opts.qmax)
     nbins = int(opts.nbins)
@@ -47,14 +47,22 @@ def main():
         time = array[:,0]
         flux = array[:,1]
         n = time.size
-        rmin = max(int(n * qmin),minbin)
-        timeSet = time - time[0]
         fluxSet = flux - numpy.mean(flux)
-        segments = [timeSet[x:x+int(per/p)] for x in xrange(0,len(timeSet),int(per/p))]
+    #divide input time array into segments
+        segments = [(x,[x:x+int(per/p)]) for x in xrange(0,len(time),int(per/p))]
+        rmin = int(qmin*len(segments[0]))
+#create outputs
+        #I'm just putting these in as a placeholder for now.
+		#I don't know what the actual outputs for this should be
+		#I just stole these array names from pavel's code.
+        srMax = numpy.array([])
+        transitDuration = numpy.array([])
+        transitPhase = numpy.array([])
         for seg in segments:
+            l,segs = seg
 #bin data points
-            seg = numpy.array(seg)
-            n = seg.size()
+            segs = numpy.array(segs)
+            n = segs.size()
 	#make sure bins not greater than data points in period
             nbins = int(opts.nbins)
             if n < nbins:
@@ -63,11 +71,17 @@ def main():
                 maxdur = int(qmax * nbins) + 1
             ppb = numpy.zeros(nbins)
             binFlx = numpy.zeros(nbins)
-            phase = seg/per - numpy.floor(seg/per)
+			#normalize phase
+            setSet = seg - seg[0]
+            phase = segSet/per - numpy.floor(segSet/per)
             bin = numpy.floor(phase * nbins)
             for x in xrange(n):
                 ppb[int(bin[x])] += 1
-                binFlx[int(bin[x])] += fluxSet[x]
+			#l is carried through from the original definition of the segments to make sure time segments sync up with their respective flux indices.
+                binFlx[int(bin[x])] += fluxSet[l+x]
+            srMax = srMax.append[numpy.nan]
+            transitDuration = transitDuration.append[numpy.nan]
+            transitPhase = transitPhase.append[numpy.nan]
 #determine srMax
             for i1 in range(nbins):
                 s = 0
@@ -78,12 +92,12 @@ def main():
                     if i2 - i1 > mindur and r >= rmin:
                         sr = s**2 / (r * (n - r))
                         if sr > srMax or numpy.isnan(srMax):
-                            srMax = sr
-                            transitDuration = i2 - i1 + 1
-                            transitPhase = i1
+                            srMax[-1] = sr
+                            transitDuration[-1] = i2 - i1 + 1
+                            transitPhase[-1] = i1
 #format output
         srMax = srMax**.5
-        print "\t".join(map(str,[kic, srMax transitPhase, transitDuration]))
+        print "\t".join(map(str,[kic, srMax, transitPhase, transitDuration]))
 		
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
