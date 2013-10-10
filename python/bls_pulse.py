@@ -49,7 +49,7 @@ def main():
         n = time.size
         fluxSet = flux - numpy.mean(flux)
     #divide input time array into segments
-        segments = [(x,[x:x+int(per/p)]) for x in xrange(0,len(time),int(per/p))]
+        segments = [(x,time[x:x+int(per/p)]) for x in xrange(0,len(time),int(per/p))]
         rmin = int(qmin*len(segments[0]))
 #create outputs
         #I'm just putting these in as a placeholder for now.
@@ -62,7 +62,7 @@ def main():
             l,segs = seg
 #bin data points
             segs = numpy.array(segs)
-            n = segs.size()
+            n = segs.size
 	#make sure bins not greater than data points in period
             nbins = int(opts.nbins)
             if n < nbins:
@@ -72,16 +72,16 @@ def main():
             ppb = numpy.zeros(nbins)
             binFlx = numpy.zeros(nbins)
 			#normalize phase
-            setSet = seg - seg[0]
+            segSet = segs - segs[0]
             phase = segSet/per - numpy.floor(segSet/per)
             bin = numpy.floor(phase * nbins)
             for x in xrange(n):
                 ppb[int(bin[x])] += 1
 			#l is carried through from the original definition of the segments to make sure time segments sync up with their respective flux indices.
                 binFlx[int(bin[x])] += fluxSet[l+x]
-            srMax = srMax.append[numpy.nan]
-            transitDuration = transitDuration.append[numpy.nan]
-            transitPhase = transitPhase.append[numpy.nan]
+            srMax = numpy.append(srMax, numpy.nan)
+            transitDuration = numpy.append(transitDuration, numpy.nan)
+            transitPhase = numpy.append(transitPhase, numpy.nan)
 #determine srMax
             for i1 in range(nbins):
                 s = 0
@@ -91,7 +91,7 @@ def main():
                     r += ppb[i2%nbins]
                     if i2 - i1 > mindur and r >= rmin:
                         sr = s**2 / (r * (n - r))
-                        if sr > srMax or numpy.isnan(srMax):
+                        if sr > srMax[-1] or numpy.isnan(srMax[-1]):
                             srMax[-1] = sr
                             transitDuration[-1] = i2 - i1 + 1
                             transitPhase[-1] = i1
