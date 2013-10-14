@@ -23,17 +23,17 @@
           output-tap (ut/local-tap output-path)
           bls-options-string (clojure.string/join
                               " "
-                              ["--minper" (opts :minper)
-                               "--maxper" (opts :maxper)
-                               "--mindur" (opts :mindur)
-                               "--maxdur" (opts :maxdur)
-                               "--nsearch" (opts :nsearch)
+                              [;"--minper" (opts :minper)
+                               "--per" (opts :maxper)
+                               "--qmin" (opts :mindur)
+                               "--qmax" (opts :maxdur)
+                               ;"--nsearch" (opts :nsearch)
                                "--nbins" (opts :nbins)
                                ])
           bls-cascade (ut/generalized-python-q
                        input-tap output-tap
                        (opts :python) (opts :jar)
-                       "python/bls_search.py" bls-options-string
+                       "python/bls_pulse.py" bls-options-string
                        nil nil
                        "bls-search")]
        (.complete bls-cascade))))
