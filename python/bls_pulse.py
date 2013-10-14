@@ -25,8 +25,8 @@ def main():
 #set up options and collect input parameters
     from optparse import OptionParser
     parser = OptionParser()
-    parser.add_option("-i","--qmin")
-    parser.add_option("-q","--qmax")
+    parser.add_option("-m","--mindur")
+    parser.add_option("-d","--maxdur")
     parser.add_option("-b","--nbins")
     parser.add_option("-p","--per")
     ##per is period that we divide dataset into.
@@ -36,12 +36,16 @@ def main():
     p = .02044
     #Kepler takes a data point every 1766 seconds or .02044 days.
 	#from Section 2.1 of the Kepler Instrument Handbook. http://archive.stsci.edu/kepler/manuals/KSCI-19033-001.pdf
-    qmin = float(opts.qmin)
-    qmax = float(opts.qmax)
+    mindur = float(opts.mindur)
+    maxdur = float(opts.maxdur)
     nbins = int(opts.nbins)
     per = float(opts.per)
-    mindur = max(int(qmin * nbins),1)
-    maxdur = int(qmax * nbins) + 1
+	#convert mindur and maxdur from units days to units bins
+	#I wouldn't be terribly surprised if there was some slight inaccuracy here
+	#I figure per/nbins is the number of days per bin in the segment, then to convert you should just divide by that
+	#I have not tested it though, maybe that should happen. also maybe I'm just being paranoid.
+    mindur = max(int(mindur*nbins/per),1)
+    maxdur = int(maxdur*nbins/per) + 1
     input = read_mapper_output(sys.stdin)
     for kic, q, data in input:
 #format data arrays
@@ -73,8 +77,8 @@ def main():
             nbins = int(opts.nbins)
             if n < nbins:
                 nbins = n
-                mindur = max(int(qmin * nbins),1)
-                maxdur = int(qmax * nbins) + 1
+                mindur = max(int(mindur*nbins/per),1)
+                maxdur = int(maxdur*nbins/per) + 1
             ppb = numpy.zeros(nbins)
             binFlx = numpy.zeros(nbins)
 			#normalize phase
