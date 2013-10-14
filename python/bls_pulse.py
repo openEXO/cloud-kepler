@@ -5,12 +5,14 @@ import base64
 import logging
 import sys
 import math
+from bls_search import encode_arr
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
 #This is the barest prototype of the bls pulse search. Basically just took peter_bls.py and removed all nonessential parts.
 #Does not yet have full functionality and is not really integrated into the frame of the rest of our code. Needs much work.
-#Completely untested but should currently give the best sr in the data set along with its duration and phase in bins. 
+#Completely untested but should currently give the best sr in the data set along with its duration and phase in bins.
 #Does not give depth or direction of signal.
 def read_mapper_output(file, separator='\t'):
 #reads data
@@ -18,7 +20,7 @@ def read_mapper_output(file, separator='\t'):
         kic, quarters,  flux_string = line.rstrip().split(separator)
         flux_array = simplejson.loads((decompress(base64.b64decode(flux_string))))
         yield kic, quarters, flux_array
-		
+
 def main():
 #set up options and collect input parameters
     from optparse import OptionParser
@@ -27,7 +29,9 @@ def main():
     parser.add_option("-q","--qmax")
     parser.add_option("-b","--nbins")
     parser.add_option("-p","--per")
-	#per is period that we divide dataset into. Bls pulse should return one best fitting pulse for each subset of length per. units in days as always.
+    ##per is period that we divide dataset into.
+    #Bls pulse should return one best fitting pulse
+    #for each subset of length per. units in days as always.
     opts, args = parser.parse_args()
     p = .02044
     #Kepler takes a data point every 1766 seconds or .02044 days.
@@ -58,7 +62,9 @@ def main():
         srMax = numpy.array([])
         transitDuration = numpy.array([])
         transitPhase = numpy.array([])
-        for seg in segments:
+        for i,seg in enumerate(segments):
+            txt = 'KIC'+kic+'|Segment  '+ str(i) + 'out of' +str(len(segments))
+            logger.info(txt)
             l,segs = seg
 #bin data points
             segs = numpy.array(segs)
@@ -97,8 +103,10 @@ def main():
                             transitPhase[-1] = i1
 #format output
         srMax = srMax**.5
-        print "\t".join(map(str,[kic, srMax, transitPhase, transitDuration]))
-		
+        print "\t".join(map(str,[kic, encode_arr(srMax),
+                                 encode_arr(transitPhase),
+                                 encode_arr(transitDuration)]))
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logger.setLevel(logging.INFO)
