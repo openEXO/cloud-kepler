@@ -67,7 +67,7 @@ def main():
         transitDuration = numpy.array([])
         transitPhase = numpy.array([])
         for i,seg in enumerate(segments):
-            txt = 'KIC'+kic+'|Segment  '+ str(i) + 'out of' +str(len(segments))
+            txt = 'KIC'+kic+'|Segment  '+ str(i) + ' out of ' +str(len(segments))
             logger.info(txt)
             l,segs = seg
 #bin data points
