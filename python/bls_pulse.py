@@ -38,6 +38,7 @@ def main():
 	#from Section 2.1 of the Kepler Instrument Handbook. http://archive.stsci.edu/kepler/manuals/KSCI-19033-001.pdf
     mindur = float(opts.mindur)
     maxdur = float(opts.maxdur)
+    rmin = max(1,int(mindur/p))
     nbins = int(opts.nbins)
     per = float(opts.per)
 	#convert mindur and maxdur from units days to units bins
@@ -58,7 +59,6 @@ def main():
         fluxSet = flux - numpy.mean(flux)
     #divide input time array into segments
         segments = [(x,time[x:x+int(per/p)]) for x in xrange(0,len(time),int(per/p))]
-        rmin = int(qmin*len(segments[0]))
 #create outputs
         #I'm just putting these in as a placeholder for now.
 		#I don't know what the actual outputs for this should be
@@ -109,7 +109,7 @@ def main():
         srMax = srMax**.5
         print "\t".join(map(str,[kic, encode_arr(srMax),
                                  encode_arr(transitPhase),
-                                 encode_arr(transitDuration)]))
+                                 encode_arr(transitDuration])))
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
