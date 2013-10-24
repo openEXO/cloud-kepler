@@ -109,7 +109,7 @@ def main():
         srMax = srMax**.5
         print "\t".join(map(str,[kic, encode_arr(srMax),
                                  encode_arr(transitPhase),
-                                 encode_arr(transitDuration])))
+                                 encode_arr(transitDuration)]))
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
