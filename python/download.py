@@ -13,11 +13,14 @@ import numpy as np
 from zlib import compress
 import simplejson
 
-QUARTER_PREFIXES = {'0':  "2010265121752",
+# NOTE:  There are two possible quarter prefixes for Quarter 4 data files.  The more common one is put first so that it is checked before the rarer one.
+# NOTE:  This list assumes long-cadence data ONLY.
+QUARTER_PREFIXES = {'0':  "2009131105131",
                     '1':  "2009166043257",
                     '2':  "2009259160929",
                     '3':  "2009350155506",
-                    '4':  "2010078095331",
+                    '4a':  "2010078095331",
+                    '4b':  "2010009091648",
                     '5':  "2010174085026",
                     '6':  "2010265121752",
                     '7':  "2010355172524",
@@ -66,21 +69,32 @@ def process_fits_object(fits_string):
         #I'll add his name here once I work up the courage to ask him.
         return test, retval
         
-def download_file_serialize(uri, kepler_id, quarter):
+def download_file_serialize(uri, kepler_id, uri_backup=""):
     """"
     Download FITS file for each quarter for each object into memory and read FITS file.
     """
     try:
+        print uri
+        print uri_backup
         response = urllib2.urlopen(uri)
         fits_stream = response.read()
         #Write file object (but do not save to a local file)
     except:
-        logging.error("Cannot download: "+ uri)
-        fits_stream = ""
+        # If the first uri failed, try the backup uri.
+        if uri_backup != "":
+            try:
+                response = urllib2.urlopen(uri_backup)
+                fits_stream = response.read()
+            except:
+                logging.error("Cannot download: " + uri + " or " + uri_backup)
+                fits_stream = ""
+        else:
+            logging.error("Cannot download: "+ uri)
+            fits_stream = ""
     return fits_stream
 
 def prepare_path(kepler_id,quarter):
-    "Construct download path frm MAST."
+    "Construct download path from MAST."
     prefix = kepler_id[0:4]
     path = "http://archive.stsci.edu/pub/kepler/lightcurves/"+\
         prefix+"/"+kepler_id+"/kplr"+kepler_id+"-"+QUARTER_PREFIXES[quarter]+"_llc.fits"
@@ -94,14 +108,29 @@ def main(separator="\t"):
     data = read_input(sys.stdin)
     for kepler_id, quarter in data:
         try:
-            path = prepare_path(kepler_id, quarter)
-            fits_stream = download_file_serialize(path, kepler_id, quarter)
-            tempfile, fits_array_string = process_fits_object(fits_stream)
+            # Create variable that will be the key to use in the QUARTER_PREFIXES dictionary.
+            quarter_key = quarter
 
-            #Write the result to STDOUT as this will be an input to a
-            #reducer that aggregates the querters together
+            # Special handling required since there are two Quarter 4 timestamps possible.  First start off with Quarter 4a.
+            if quarter == '4':
+                quarter_key = '4a'
+            
+            # Now create the URL regardless of Quarter.
+            path = prepare_path(kepler_id, quarter_key)
+
+            # If Quarter 4, prepare a "backup" path of the second possible epoch in Quarter 4.
+            if quarter == '4':
+                quarter_key = '4b'
+                path_backup = prepare_path(kepler_id, quarter_key)
+
+            # Download the requested URL.
+            fits_stream = download_file_serialize(path, kepler_id, path_backup)
+            tempfile, fits_array_string = process_fits_object(fits_stream)
+            # Write the result to STDOUT as this will be an input to a
+            # reducer that aggregates the querters together
             print "\t".join([kepler_id, quarter, path, fits_array_string])
             os.unlink(tempfile)
+
         except:
             pass
 
