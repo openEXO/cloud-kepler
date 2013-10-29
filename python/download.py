@@ -69,13 +69,11 @@ def process_fits_object(fits_string):
         #I'll add his name here once I work up the courage to ask him.
         return test, retval
         
-def download_file_serialize(uri, kepler_id, uri_backup=""):
+def download_file_serialize(uri, kepler_id, uri_backup):
     """"
     Download FITS file for each quarter for each object into memory and read FITS file.
     """
     try:
-        print uri
-        print uri_backup
         response = urllib2.urlopen(uri)
         fits_stream = response.read()
         #Write file object (but do not save to a local file)
@@ -108,8 +106,9 @@ def main(separator="\t"):
     data = read_input(sys.stdin)
     for kepler_id, quarter in data:
         try:
-            # Create variable that will be the key to use in the QUARTER_PREFIXES dictionary.
+            # Create variable that will be the key to use in the QUARTER_PREFIXES dictionary.  The backup path is only defined if it's Quarter 4.
             quarter_key = quarter
+            path_backup = ""
 
             # Special handling required since there are two Quarter 4 timestamps possible.  First start off with Quarter 4a.
             if quarter == '4':
