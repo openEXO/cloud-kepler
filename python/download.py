@@ -60,8 +60,11 @@ def process_fits_object(fits_string):
         test = tempfilename
         fits_list = pyfits.getdata(tempfilename)
         error_status = np.asarray([c[9] for c in fits_list])
+        bjd_trunci = float(pyfits.getval(tempfilename, "bjdrefi", ext=1))
+        bjd_truncf = pyfits.getval(tempfilename, "bjdreff", ext=1)
+        ## Note: Times are updated to be in proper reduced barycentric Julian date, RBJD = BJD - 2400000.0
         time_pdcflux_pdcerror = np.asarray(
-            [[c[0],c[7],c[8]] for i,c in
+            [[c[0]+bjd_trunci+bjd_truncf-2400000.0,c[7],c[8]] for i,c in
              enumerate(fits_list) if error_status[i] == 0])
         retval = base64.b64encode(compress(simplejson.dumps(time_pdcflux_pdcerror.tolist())))
         #fix for windows, returns the filename into main so that os.unlink can be called there
