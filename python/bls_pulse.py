@@ -125,102 +125,108 @@ def main():
         quarters = q
         lightcurve = f
 
-    ## Calculate the time baseline of this lightcurve (this will be in days).
-    lightcurve_timebaseline = get_lc_baseline(lightcurve)
+        ## Calculate the time baseline of this lightcurve (this will be in days).
+        lightcurve_timebaseline = get_lc_baseline(lightcurve)
 
-    ## Convert the min and max transit durations to units of bins from units of days.
-    mindur = convert_duration_to_bins(opts.min_duration, nbins, trial_period, duration_type="min")
-    maxdur = convert_duration_to_bins(opts.max_duration, nbins, trial_period, duration_type="max")
+        ## Convert the min and max transit durations to units of bins from units of days.
+        mindur = convert_duration_to_bins(opts.min_duration, nbins, trial_period, duration_type="min")
+        maxdur = convert_duration_to_bins(opts.max_duration, nbins, trial_period, duration_type="max")
 
-    ## Define the minimum "r" value.  Note that "r" is the sum of the weights on flux at full depth.
-    ## Note:  The sample rate of Kepler long-cadence data is (within a second) 0.02044 days.
-    lc_samplerate = 0.02044
-    r_min = max(1,int(mindur/lc_samplerate))
+        ## Define the minimum "r" value.  Note that "r" is the sum of the weights on flux at full depth.
+        ## Note:  The sample rate of Kepler long-cadence data is (within a second) 0.02044 days.
+        lc_samplerate = 0.02044
+        r_min = max(1,int(mindur/lc_samplerate))
 
-    ## Note (SWF):  Left off on first-pass here.
+        ## Note (SWF):  Left off on first-pass here.
 
-    # format data arrays
-    array = numpy.array(lightcurve)
-    fixedArray = numpy.isfinite(array[:,1])
-    array = array[fixedArray]
-    time = array[:,0]
-    flux = array[:,1]
-    n = time.size
-    fluxSet = flux - numpy.mean(flux)
-    # divide input time array into segments
-    segments = [(x,time[x:x+int(trial_period/lc_samplerate)]) for x in xrange(0,len(time),int(trial_period/lc_samplerate))]
-    # create outputs
-    # I'm just putting these in as a placeholder for now.
-    # I don't know what the actual outputs for this should be
-    # I just stole these array names from pavel's code.
-    srMax = numpy.array([])
-    transitDuration = numpy.array([])
-    transitPhase = numpy.array([])
-    transitMidTime = numpy.array([])
-    transitDepth   = numpy.array([])
-    for i,seg in enumerate(segments):
-        txt = 'KIC'+kic_id+'|Segment  '+ str(i) + ' out of ' +str(len(segments))
-        logger.info(txt)
-        l,segs = seg
-        # bin data points
-        segs = numpy.array(segs)
-        n = segs.size
-	# make sure bins not greater than data points in period
-        nbins = int(opts.n_bins)
-        if n < nbins:
-            nbins = n
-            mindur = convert_duration_to_bins(opts.min_duration, nbins, trial_period, duration_type="min")
-            maxdur = convert_duration_to_bins(opts.min_duration, nbins, trial_period, duration_type="max")
-        ppb = numpy.zeros(nbins)
-        binFlx = numpy.zeros(nbins)
-        # normalize phase
-        # the following line will not maintain absolute phase because it redefines it every segment
-        segSet = segs - segs[0]
-        phase = segSet/trial_period - numpy.floor(segSet/trial_period)
-        bin = numpy.floor(phase * nbins)
-        for x in xrange(n):
-            ppb[int(bin[x])] += 1
-            # l is carried through from the original definition of the segments to make sure time segments sync up with their respective flux indices.
-            binFlx[int(bin[x])] += fluxSet[l+x]
-            # remove mean flux segment by segment (use a detrended flux eventually)
-            binFlx = binFlx - numpy.mean(binFlx)
+        # format data arrays
+        array = numpy.array(lightcurve)
+        fixedArray = numpy.isfinite(array[:,1])
+        array = array[fixedArray]
+        time = array[:,0]
+        flux = array[:,1]
+        n = time.size
+        fluxSet = flux - numpy.mean(flux)
+        # divide input time array into segments
+        segments = [(x,time[x:x+int(trial_period/lc_samplerate)]) for x in xrange(0,len(time),int(trial_period/lc_samplerate))]
+        # create outputs
+        # I'm just putting these in as a placeholder for now.
+        # I don't know what the actual outputs for this should be
+        # I just stole these array names from pavel's code.
+        srMax = numpy.array([])
+        transitDuration = numpy.array([])
+        transitPhase = numpy.array([])
+        transitMidTime = numpy.array([])
+        transitDepth   = numpy.array([])
+        for i,seg in enumerate(segments):
+            txt = 'KIC'+kic_id+'|Segment  '+ str(i) + ' out of ' +str(len(segments))
+            logger.info(txt)
+            l,segs = seg
+            # bin data points
+            segs = numpy.array(segs)
+            n = segs.size
+            # make sure bins not greater than data points in period
+            nbins = int(opts.n_bins)
+            if n < nbins:
+                nbins = n
+                mindur = convert_duration_to_bins(opts.min_duration, nbins, trial_period, duration_type="min")
+                maxdur = convert_duration_to_bins(opts.min_duration, nbins, trial_period, duration_type="max")
+            ppb = numpy.zeros(nbins)
+            binFlx = numpy.zeros(nbins)
+            # normalize phase
+            # the following line will not maintain absolute phase because it redefines it every segment
+            segSet = segs - segs[0]
+            phase = segSet/trial_period - numpy.floor(segSet/trial_period)
+            bin = numpy.floor(phase * nbins)
+            for x in xrange(n):
+                ppb[int(bin[x])] += 1
+                # l is carried through from the original definition of the segments to make sure time segments sync up with their respective flux indices.
+                binFlx[int(bin[x])] += fluxSet[l+x]
+                # remove mean flux segment by segment (use a detrended flux eventually)
+                binFlx = binFlx - numpy.mean(binFlx)
                     
-        srMax = numpy.append(srMax, numpy.nan)
-        transitDuration = numpy.append(transitDuration, numpy.nan)
-        transitPhase = numpy.append(transitPhase, numpy.nan)
-        transitMidTime = numpy.append(transitMidTime, numpy.nan)
-        transitDepth   = numpy.append(transitDepth  , numpy.nan)
-        # determine srMax
-        for i1 in range(nbins):
-            s = 0
-            r = 0
-            for i2 in range(i1, i1 + maxdur + 1):
-                s += binFlx[i2%nbins]
-                r += ppb[i2%nbins]
-                if i2 - i1 > mindur and r >= r_min and direction*s >= 0:
-                    sr = 1 * (s**2 / (r * (n - r)))
-                    if sr > srMax[-1] or numpy.isnan(srMax[-1]):
-                        srMax[-1] = sr
-                        transitDuration[-1] = i2 - i1 + 1
-                        transitPhase[-1] = i1
-                        transitPhase[-1] = i1
-                        transitDepth[-1] = -s*n/(r*(n-r))
-                        transitMidTime[-1] = segs[0] + 0.5*(i1+i2)*trial_period/nbins
-    # format output
-    srMax = srMax**.5
+            srMax = numpy.append(srMax, numpy.nan)
+            transitDuration = numpy.append(transitDuration, numpy.nan)
+            transitPhase = numpy.append(transitPhase, numpy.nan)
+            transitMidTime = numpy.append(transitMidTime, numpy.nan)
+            transitDepth   = numpy.append(transitDepth  , numpy.nan)
+            # determine srMax
+            for i1 in range(nbins):
+                s = 0
+                r = 0
+                for i2 in range(i1, i1 + maxdur + 1):
+                    s += binFlx[i2%nbins]
+                    r += ppb[i2%nbins]
+                    if i2 - i1 > mindur and r >= r_min and direction*s >= 0:
+                        sr = 1 * (s**2 / (r * (n - r)))
+                        if sr > srMax[-1] or numpy.isnan(srMax[-1]):
+                            srMax[-1] = sr
+                            transitDuration[-1] = i2 - i1 + 1
+                            transitPhase[-1] = i1
+                            transitPhase[-1] = i1
+                            transitDepth[-1] = -s*n/(r*(n-r))
+                            transitMidTime[-1] = segs[0] + 0.5*(i1+i2)*trial_period/nbins
+        # format output
+        srMax = srMax**.5
         
-    # Print output.
-    if opts.print_format == 'encoded':
-        print "\t".join(map(str,[kic_id, encode_arr(srMax),
-                                 encode_arr(transitPhase),
-                                 encode_arr(transitDuration),
-                                 encode_arr(transitDepth),
-                                 encode_arr(transitMidTime)]))
-    elif opts.print_format == 'normal':
-        print "\t".join(map(str,['Segment','srMax', 'transitPhase', 'transitDuration', 'transitDepth', 'transitMidTime']))
-        for i,seq in enumerate(segments):
-            print "\t".join(map(str,[i, srMax[i], transitPhase[i], transitDuration[i], transitDepth[i], transitMidTime[i]]))
-                
+        # Print output.
+        if opts.print_format == 'encoded':
+            print "\t".join(map(str,[kic_id, encode_arr(srMax),
+                                     encode_arr(transitPhase),
+                                     encode_arr(transitDuration),
+                                     encode_arr(transitDepth),
+                                     encode_arr(transitMidTime)]))
+        elif opts.print_format == 'normal':
+            print "-" * 80
+            print "Kepler " + kic_id
+            print "Quarters: " + quarters
+            print "-" * 80
+            print "\t".join(map(str,['Segment','srMax', 'transitPhase', 'transitDuration', 'transitDepth', 'transitMidTime']))
+            for i,seq in enumerate(segments):
+                print "\t".join(map(str,[i, srMax[i], transitPhase[i], transitDuration[i], transitDepth[i], transitMidTime[i]]))
+            print "-" * 80
+            print "\n"
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logger.setLevel(logging.INFO)

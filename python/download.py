@@ -104,7 +104,7 @@ def prepare_path(kepler_id,quarter):
 def main(separator="\t"):
     """"
     Read from KICs and quarters from STDIN, download FITS files and
-    process FITS file on the lfy in memory.
+    process FITS file on the fly in memory.
     """
     data = read_input(sys.stdin)
     for kepler_id, quarter in data:
