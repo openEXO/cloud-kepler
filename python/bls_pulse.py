@@ -159,7 +159,7 @@ def main():
         transitMidTime = numpy.array([])
         transitDepth   = numpy.array([])
         for i,seg in enumerate(segments):
-            txt = 'KIC'+kic_id+'|Segment  '+ str(i) + ' out of ' +str(len(segments))
+            txt = 'KIC'+kic_id+'|Segment  '+ str(i+1) + ' out of ' +str(len(segments))
             logger.info(txt)
             l,segs = seg
             # bin data points
@@ -194,9 +194,9 @@ def main():
             for i1 in range(nbins):
                 s = 0
                 r = 0
-                for i2 in range(i1, i1 + maxdur + 1):
-                    s += binFlx[i2%nbins]
-                    r += ppb[i2%nbins]
+                for i2 in range(i1, min(i1 + maxdur + 1,nbins)):
+                    s += binFlx[i2]
+                    r += ppb[i2]
                     if i2 - i1 > mindur and r >= r_min and direction*s >= 0:
                         sr = 1 * (s**2 / (r * (n - r)))
                         if sr > srMax[-1] or numpy.isnan(srMax[-1]):
