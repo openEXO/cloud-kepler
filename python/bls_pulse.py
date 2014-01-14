@@ -42,6 +42,7 @@ def setup_input_options(parser):
     parser.add_option("-b", "--nbins", action="store", type="int", dest="n_bins", default=100, help="[Optional] Number of bins to divide the lightcurve into.  Default = 100.")
     parser.add_option("--direction", action="store", type="int", dest="direction", default=0, help="[Optional] Direction of box wave to look for.  1=blip (top-hat), -1=dip (drop), 0=both (most significant).  Default = 0")
     parser.add_option("--printformat", action="store", type="string", dest="print_format", default="encoded", help="[Optional] Format of strings printed to screen.  Options are 'encoded' (base-64 binary) or 'normal' (human-readable ASCII strings).  Default = 'encoded'.")
+    parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="[Optional] Turn on verbose messages/logging.  Default = False.")
 ############################################################################################
 
 
@@ -92,6 +93,42 @@ def convert_duration_to_bins(duration_days, nbins, per, duration_type):
 
 
 ############################################################################################
+## Convert the requested duration (in days) to a duration in units of bins.
+############################################################################################
+def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_period, binFlx, ppb, segs):
+
+    ## Note (SWF):  I want to double check the math here matches what is done in Kovacs et al. (2002).  On the TO-DO list...
+
+    ## Initialize output values to NaN.
+    sr = numpy.nan
+    thisDuration = numpy.nan
+    thisPhase = numpy.nan
+    thisDepth = numpy.nan
+    thisMidTime = numpy.nan
+
+    ## Initialize the "best" Signal Residue to NaN.
+    best_SR = numpy.nan
+    
+    for i1 in range(nbins):
+        s = 0
+        r = 0
+        for i2 in range(i1, min(i1 + maxdur + 1,nbins)):
+            s += binFlx[i2]
+            r += ppb[i2]
+            if i2 - i1 > mindur and r >= r_min and direction*s >= 0:
+                sr = 1 * (s**2 / (r * (n - r)))
+                if sr > best_SR or numpy.isnan(best_SR):
+                    best_SR = sr
+                    thisDuration = i2 - i1 + 1
+                    thisPhase = i1
+                    thisDepth = -s*n/(r*(n-r))
+                    thisMidTime = segs[0] + 0.5*(i1+i2)*trial_period/nbins
+    ## Return a tuple containing the Signal Residue and corresponding signal information.  If no Signal Residue was calculated in the loop above, then these will all be NaN's.
+    return (best_SR, thisDuration, thisPhase, thisDepth, thisMidTime)
+############################################################################################
+
+
+############################################################################################
 ## This is the main routine.
 ############################################################################################
 def main():
@@ -137,35 +174,51 @@ def main():
         lc_samplerate = 0.02044
         r_min = max(1,int(mindur/lc_samplerate))
 
-        ## Note (SWF):  Left off on first-pass here.
+        ## Extract lightcurve information and mold it into numpy arrays.
+        ## First identify which elements are not finite and remove them.
+        lc_nparray = numpy.array(lightcurve)
+        isFiniteArr = numpy.isfinite(lc_nparray[:,1])
+        lc_nparray = lc_nparray[isFiniteArr]
+        time = lc_nparray[:,0]
+        flux = lc_nparray[:,1]
+        
+        ## Calculate mean of the flux.
+        mean_flux_val = numpy.mean(flux)
 
-        # format data arrays
-        array = numpy.array(lightcurve)
-        fixedArray = numpy.isfinite(array[:,1])
-        array = array[fixedArray]
-        time = array[:,0]
-        flux = array[:,1]
-        n = time.size
-        fluxSet = flux - numpy.mean(flux)
-        # divide input time array into segments
+        ## Create a version of the flux that has had the mean subtracted.
+        flux_minus_mean = flux - mean_flux_val
+
+        ## Divide the input time array into segments.
         segments = [(x,time[x:x+int(trial_period/lc_samplerate)]) for x in xrange(0,len(time),int(trial_period/lc_samplerate))]
-        # create outputs
-        # I'm just putting these in as a placeholder for now.
-        # I don't know what the actual outputs for this should be
-        # I just stole these array names from pavel's code.
+
+        ## Initialize storage arrays for output values.  We don't know how many signals we will find, so for now these are instantiated without a length and we make use of the (more inefficient) "append" method in numpy to grow the array.  This could be one area that could be made more efficient if speed is a concern, e.g., by making these a sufficiently large size, filling them in starting from the first index, and then remove those that are empty at the end.  A sufficiently large size could be something like the time baseline of the lightcurve divided by the min. transit duration being considered, for example.
         srMax = numpy.array([])
         transitDuration = numpy.array([])
         transitPhase = numpy.array([])
         transitMidTime = numpy.array([])
         transitDepth   = numpy.array([])
+
+        ## For each segment of this lightcurve, bin the data points into appropriate segments, normalize the binned fluxes, and calculate SR_Max.  If the new SR value is greater than the previous SR_Max value, store it as a potential signal.
+        ## NOTE: "sr" is the Signal Residue as defined in the original BLS paper by Kovacs et al. (2002), A&A, 391, 377.
         for i,seg in enumerate(segments):
-            txt = 'KIC'+kic_id+'|Segment  '+ str(i+1) + ' out of ' +str(len(segments))
-            logger.info(txt)
+            ## Print progress information to screen, if verbose is set.
+            if opts.verbose:
+                txt = 'KIC'+kic_id+'|Segment  '+ str(i+1) + ' out of ' +str(len(segments))
+                logger.info(txt)
+
+            ## Default this segments output values to NaN.  If a valid SR_Max is found, these will be updated with finite values.
+            srMax = numpy.append(srMax, numpy.nan)
+            transitDuration = numpy.append(transitDuration, numpy.nan)
+            transitPhase = numpy.append(transitPhase, numpy.nan)
+            transitMidTime = numpy.append(transitMidTime, numpy.nan)
+            transitDepth   = numpy.append(transitDepth, numpy.nan)
+
+            ## Bin the data points.
             l,segs = seg
-            # bin data points
             segs = numpy.array(segs)
             n = segs.size
-            # make sure bins not greater than data points in period
+
+            ## Make sure the number of bins is not greater than the number of data points in this segment.
             nbins = int(opts.n_bins)
             if n < nbins:
                 nbins = n
@@ -173,43 +226,36 @@ def main():
                 maxdur = convert_duration_to_bins(opts.min_duration, nbins, trial_period, duration_type="max")
             ppb = numpy.zeros(nbins)
             binFlx = numpy.zeros(nbins)
-            # normalize phase
-            # the following line will not maintain absolute phase because it redefines it every segment
+
+            ## Normalize the phase.
+            ## Note: the following line will not maintain absolute phase because it redefines it every segment.
             segSet = segs - segs[0]
             phase = segSet/trial_period - numpy.floor(segSet/trial_period)
             bin = numpy.floor(phase * nbins)
+
             for x in xrange(n):
                 ppb[int(bin[x])] += 1
-                # l is carried through from the original definition of the segments to make sure time segments sync up with their respective flux indices.
-                binFlx[int(bin[x])] += fluxSet[l+x]
-                # remove mean flux segment by segment (use a detrended flux eventually)
+                ## "l" is carried through from the original definition of the segments to make sure time segments sync up with their respective flux indices.
+                binFlx[int(bin[x])] += flux_minus_mean[l+x]
+                ## Remove the mean flux on a segment by segment basis.
+                ## Note: We should use a detrended flux eventually.
                 binFlx = binFlx - numpy.mean(binFlx)
-                    
-            srMax = numpy.append(srMax, numpy.nan)
-            transitDuration = numpy.append(transitDuration, numpy.nan)
-            transitPhase = numpy.append(transitPhase, numpy.nan)
-            transitMidTime = numpy.append(transitMidTime, numpy.nan)
-            transitDepth   = numpy.append(transitDepth  , numpy.nan)
-            # determine srMax
-            for i1 in range(nbins):
-                s = 0
-                r = 0
-                for i2 in range(i1, min(i1 + maxdur + 1,nbins)):
-                    s += binFlx[i2]
-                    r += ppb[i2]
-                    if i2 - i1 > mindur and r >= r_min and direction*s >= 0:
-                        sr = 1 * (s**2 / (r * (n - r)))
-                        if sr > srMax[-1] or numpy.isnan(srMax[-1]):
-                            srMax[-1] = sr
-                            transitDuration[-1] = i2 - i1 + 1
-                            transitPhase[-1] = i1
-                            transitPhase[-1] = i1
-                            transitDepth[-1] = -s*n/(r*(n-r))
-                            transitMidTime[-1] = segs[0] + 0.5*(i1+i2)*trial_period/nbins
-        # format output
+            
+            ## Determine SR_Max.  The return tuple consists of:
+            ##      (Signal Residue, Signal Duration, Signal Phase, Signal Depth, Signal MidTime)
+            sr_tuple = calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_period, binFlx, ppb, segs)
+            ## If the Signal Residue is finite, then we need to add these parameters to our output storage array.
+            if numpy.isfinite(sr_tuple[0]):
+                srMax[-1] = sr_tuple[0]
+                transitDuration[-1] = sr_tuple[1]
+                transitPhase[-1] = sr_tuple[2]
+                transitDepth[-1] = sr_tuple[3]
+                transitMidTime[-1] = sr_tuple[4]
+                
+        ## Take the square root of the Signal Residue.
         srMax = srMax**.5
         
-        # Print output.
+        ## Print output.
         if opts.print_format == 'encoded':
             print "\t".join(map(str,[kic_id, encode_arr(srMax),
                                      encode_arr(transitPhase),
@@ -222,8 +268,8 @@ def main():
             print "Quarters: " + quarters
             print "-" * 80
             print "\t".join(map(str,['Segment','srMax', 'transitPhase', 'transitDuration', 'transitDepth', 'transitMidTime']))
-            for i,seq in enumerate(segments):
-                print "\t".join(map(str,[i, srMax[i], transitPhase[i], transitDuration[i], transitDepth[i], transitMidTime[i]]))
+            for ii,seq in enumerate(segments):
+                print "\t".join(map(str,[ii, srMax[ii], transitPhase[ii], transitDuration[ii], transitDepth[ii], transitMidTime[ii]]))
             print "-" * 80
             print "\n"
 
