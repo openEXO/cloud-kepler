@@ -14,7 +14,7 @@ import base64
 import logging
 import sys
 import math
-from bls_search import encode_arr
+from optparse import OptionParser
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -60,6 +60,15 @@ def check_input_options(parser,opts):
         parser.error("Max. duration must be > min. duration.")
     if opts.n_bins <= 0:
         parser.error("Number of bins must be > 0.")
+############################################################################################
+
+
+############################################################################################
+## This function transforms an array into compressed base-64 strings.
+############################################################################################
+def encode_arr(arr):
+    #64bit encodes numpy arrays
+    return base64.b64encode(compress(simplejson.dumps(arr.tolist())))
 ############################################################################################
 
 
@@ -133,7 +142,6 @@ def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_period, binFlx
 ############################################################################################
 def main():
     ## Define input options.
-    from optparse import OptionParser
     parser = OptionParser(usage="%prog -p [-m] [-d] [-b] [--direction]", version="%prog 1.0")
     setup_input_options(parser)
     
