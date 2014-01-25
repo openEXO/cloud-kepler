@@ -40,12 +40,12 @@ def adderr(data,n,s,m):
 		
 def bin(data,v,u,n):
 #bins data points to export sums across longer intervals like kepler does.
-    data2 = numpy.array([[x * v, 0] for x in xrange(1,int(n/v + 1))])
+    data2 = numpy.array([[x * v, 0] for x in xrange(1,int(n/v + 2))])
     y = 0
 	#tracks index we are on in bin array
     zet = 0
 	#tracks how many time points have been thrown into bin point
-    for z in data[:,0]:
+    for z in xrange(len(data[:,0])):
         if data[:,0][z] <= data2[:,0][y]:
 		    #add time point to bin point
             data2[y][1] += data[z][1]
@@ -69,10 +69,11 @@ def main(separator = '\t'):
     data = numpy.array([[x * u, 0] for x in xrange(1,int(n/u + 1))])
     addsig(data,n,l,t,p,d)
     adderr(data,n,s,m)
-	#binning has not yet been fully debugged.
-    #data2 = bin(data,v,u,n)
+    data2 = bin(data,v,u,n)
     print "%s%s%s%s%s" % (kic, separator, q, separator, encode_list(data))
-    #print "%s%s%s%s%s" % (kic, separator, q, separator, encode_list(data2)) 
+    print "%s%s%s%s%s" % (kic, separator, q, separator, encode_list(data2))
+	#these two print statements need to be put together into a fits file.
+	#maybe make kic and q setable parameters or something
 	
 def encode_list(flux_list):
     return base64.b64encode(compress(simplejson.dumps(flux_list.tolist())))
