@@ -36,7 +36,7 @@ def read_mapper_output(file, separator='\t'):
 ## This function sets up command-line options and arguments through the OptionParser class.
 ############################################################################################
 def setup_input_options(parser):
-    parser.add_option("-p", "--period", action="store", type="float", dest="period", help="[Required] Trial period (days).  There is no default value.")
+    parser.add_option("-p", "--segment", action="store", type="float", dest="segment", help="[Required] Trial segment (days).  There is no default value.")
     parser.add_option("-m", "--mindur", action="store", type="float", dest="min_duration", default=0.0416667, help="[Optional] Minimum transit duration to search for (days).  Default = 0.0416667 (1 hour).")
     parser.add_option("-d", "--maxdur", action="store", type="float", dest="max_duration", default=12.0, help="[Optional] Maximum transit duration to search for (days).  Default = 0.5 (12 hours).")
     parser.add_option("-b", "--nbins", action="store", type="int", dest="n_bins", default=100, help="[Optional] Number of bins to divide the lightcurve into.  Default = 100.")
@@ -50,7 +50,7 @@ def setup_input_options(parser):
 ## This function checks input arguments satisfy some minimum requirements.
 ############################################################################################
 def check_input_options(parser,opts):
-    if opts.period <= 0.0:
+    if opts.segment <= 0.0:
         parser.error("Period must be > 0.")
     if opts.min_duration <= 0.0:
         parser.error("Min. duration must be > 0.")
@@ -104,7 +104,7 @@ def convert_duration_to_bins(duration_days, nbins, per, duration_type):
 ############################################################################################
 ## Convert the requested duration (in days) to a duration in units of bins.
 ############################################################################################
-def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_period, binFlx, ppb, segs):
+def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_segment, binFlx, ppb, segs):
 
     ## Note (SWF):  I want to double check the math here matches what is done in Kovacs et al. (2002).  On the TO-DO list...
 
@@ -131,7 +131,7 @@ def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_period, binFlx
                     thisDuration = i2 - i1 + 1
                     thisPhase = i1
                     thisDepth = -s*n/(r*(n-r))
-                    thisMidTime = segs[0] + 0.5*(i1+i2)*trial_period/nbins
+                    thisMidTime = segs[0] + 0.5*(i1+i2)*trial_segment/nbins
     ## Return a tuple containing the Signal Residue and corresponding signal information.  If no Signal Residue was calculated in the loop above, then these will all be NaN's.
     return (best_SR, thisDuration, thisPhase, thisDepth, thisMidTime)
 ############################################################################################
@@ -148,16 +148,16 @@ def main():
     ## Parse input options from the command line.
     opts, args = parser.parse_args()
 
-    ## The trial period is a "required" "option", at least for now.  So, check to make sure it exists.
-    if not opts.period:
-        parser.error("No trial period specified.")
+    ## The trial segment is a "required" "option", at least for now.  So, check to make sure it exists.
+    if not opts.segment:
+        parser.error("No trial segment specified.")
 
     ## Check input arguments are valid and sensible.
     check_input_options(parser,opts)
 
     ## Variables for some of the input options, since they may change later in the program.
     nbins = opts.n_bins
-    trial_period = opts.period
+    trial_segment = opts.segment
     direction = opts.direction
 
     ## Read in the KIC ID, Quarter, and lightcurve data from standard input.
@@ -174,8 +174,8 @@ def main():
         lightcurve_timebaseline = get_lc_baseline(lightcurve)
 
         ## Convert the min and max transit durations to units of bins from units of days.
-        mindur = convert_duration_to_bins(opts.min_duration, nbins, trial_period, duration_type="min")
-        maxdur = convert_duration_to_bins(opts.max_duration, nbins, trial_period, duration_type="max")
+        mindur = convert_duration_to_bins(opts.min_duration, nbins, trial_segment, duration_type="min")
+        maxdur = convert_duration_to_bins(opts.max_duration, nbins, trial_segment, duration_type="max")
 
         ## Define the minimum "r" value.  Note that "r" is the sum of the weights on flux at full depth.
         ## Note:  The sample rate of Kepler long-cadence data is (within a second) 0.02044 days.
@@ -197,9 +197,10 @@ def main():
         flux_minus_mean = flux - mean_flux_val
 
         ## Divide the input time array into segments.
-        segments = [(x,time[x:x+int(trial_period/lc_samplerate)]) for x in xrange(0,len(time),int(trial_period/lc_samplerate))]
+        segments = [(x,time[x:x+int(trial_segment/lc_samplerate)]) for x in xrange(0,len(time),int(trial_segment/lc_samplerate))]
 
         ## Initialize storage arrays for output values.  We don't know how many signals we will find, so for now these are instantiated without a length and we make use of the (more inefficient) "append" method in numpy to grow the array.  This could be one area that could be made more efficient if speed is a concern, e.g., by making these a sufficiently large size, filling them in starting from the first index, and then remove those that are empty at the end.  A sufficiently large size could be something like the time baseline of the lightcurve divided by the min. transit duration being considered, for example.
+        ## I think we sort of do now how long they are going to be, we are finding the best signal for each segment so it'll come out equal to the number of segments. It was just programmed this way, probably inefficient though.
         srMax = numpy.array([])
         transitDuration = numpy.array([])
         transitPhase = numpy.array([])
@@ -230,15 +231,15 @@ def main():
             nbins = int(opts.n_bins)
             if n < nbins:
                 nbins = n
-                mindur = convert_duration_to_bins(opts.min_duration, nbins, trial_period, duration_type="min")
-                maxdur = convert_duration_to_bins(opts.min_duration, nbins, trial_period, duration_type="max")
+                mindur = convert_duration_to_bins(opts.min_duration, nbins, trial_segment, duration_type="min")
+                maxdur = convert_duration_to_bins(opts.min_duration, nbins, trial_segment, duration_type="max")
             ppb = numpy.zeros(nbins)
             binFlx = numpy.zeros(nbins)
 
             ## Normalize the phase.
             ## Note: the following line will not maintain absolute phase because it redefines it every segment.
             segSet = segs - segs[0]
-            phase = segSet/trial_period - numpy.floor(segSet/trial_period)
+            phase = segSet/trial_segment - numpy.floor(segSet/trial_segment)
             bin = numpy.floor(phase * nbins)
 
             for x in xrange(n):
@@ -251,7 +252,7 @@ def main():
             
             ## Determine SR_Max.  The return tuple consists of:
             ##      (Signal Residue, Signal Duration, Signal Phase, Signal Depth, Signal MidTime)
-            sr_tuple = calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_period, binFlx, ppb, segs)
+            sr_tuple = calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_segment, binFlx, ppb, segs)
             ## If the Signal Residue is finite, then we need to add these parameters to our output storage array.
             if numpy.isfinite(sr_tuple[0]):
                 srMax[-1] = sr_tuple[0]
