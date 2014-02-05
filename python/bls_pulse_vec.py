@@ -22,7 +22,7 @@ def reindex_to_matrix(series, matrix):
     """
     return np.array(series.reindex(matrix.flatten())).reshape(matrix.shape)
 
-def bls_vec(light_curve, periods, min_duration, max_duration, n_bins, detrend=detrend_mean_remove):
+def bls_pulse_vec(light_curve, periods, min_duration, max_duration, n_bins, detrend=detrend_mean_remove):
     """Box Least Square fitting algorithm, vectorized implementation
 
     Kovacs, 2002

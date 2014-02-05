@@ -3,6 +3,7 @@
 ############################################################################################
 import logging
 import sys
+import os
 import glob
 import random
 import re
@@ -31,8 +32,9 @@ def get_quarter_times():
     ## Where in the file name is the Quarter number found (after splitting).
     quarter_pos = -2
     ## Location of look-up files (relative path).
-    timetable_file_path = "quarter_timetables/"
-    timetable_files = glob.glob(timetable_file_path + "sim_lc_times_q_*.txt")
+    timetable_file_path = "quarter_timetables"+os.sep
+    timetable_fullpath = os.path.join(os.path.dirname(__file__), timetable_file_path)
+    timetable_files = glob.glob(timetable_fullpath + "sim_lc_times_q_*.txt")
     n_files = len(timetable_files)
     ## Instantiate the return dict.  Maybe there's a more "pythonic" way to build the return dict, but for now...
     return_dict = {}

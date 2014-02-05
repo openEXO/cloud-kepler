@@ -60,13 +60,13 @@ def add_gauss_uncertainty(flux, sigma):
 
 
 ############################################################################################
-## This function takes a highly-sampled artificial lightcurve and re-samples it onto Kepler long-cadence times and integrations.
+## This function applies a random Gaussian error to each data point, given a 1-sigma value.
 ############################################################################################
-def resample_to_kepler_longcadence(itime, iflux):
+def generate_simulated_lc(times, period, depth, duration):
     pass;
     ## CODING STUB!!
 ############################################################################################
-            
+
 
 ############################################################################################
 ## This is the main routine.  You can call it from the command-line using the command-line options to specify things like period, depth, and duration, or from a calling function (see drive_make_lc.py).  Note that at the moment I'm not sure how to handle specifying a list of times from the command-line, in that case the default is just to simulate 3 years of constant observations at 1-minute cadence.
@@ -74,7 +74,6 @@ def resample_to_kepler_longcadence(itime, iflux):
 ## TO-DO LIST
 
 ## - Add ability to apply flux errors, phase shifts.
-## - Get re-binning to Kepler times - Is this even needed since we are already using valid Kepler times and creating an array of 1-minute cadence...?
 ## - How to pass array of times from the command-line, if at all?
 ## - NOTE: When creating lightcurve, I think we just calculate phases and determine if they fall in or out of eclipse, then apply to the unfolded array of times...
 ############################################################################################

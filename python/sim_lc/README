@@ -1,0 +1,9 @@
+## Description of files in SIM_LC package. ##
+
+bls_vec_simulator = Vectorized box-shape lightcurve simulator written by Andrea Zonca.  This is used in the Unit Test for testing the bls_pulse algorithms.
+
+drive_make_lc = Wrapper around make_lc.py to create artificial lightcurves.  This can be used to test the entire pipeline chain and/or to run completeness tests.
+
+make_lc = Main program to create artificial lightcurves.  Can be extended to make increasingly complex simulated lightcurves to run sensitivity and completeness tests.
+
+quarter_timetables = Sub-directory containing text files that store observing times for each Quarter, based on the actual observing times of Kepler 16, which happened to be observed in long-cadence mode in every Quarter.
