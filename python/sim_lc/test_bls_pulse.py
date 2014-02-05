@@ -73,8 +73,12 @@ def main():
     ## Create the simulated lightcurves.
     for p, d, dr, ph in zip(period_list, depth_list, duration_ratio_list, phase_list):
         this_lc = bls_vec_simulator.bls_vec_simulator(p, dr, d, ph, signal_to_noise, n_samples, baseline)
-        matplot.plot(numpy.asarray(this_lc['lc'].index), numpy.asarray(this_lc['lc'].flux))
-        matplot.show()
+##        print this_lc["transit_times"]
+##        print this_lc["transit_depths"]
+##        print this_lc["transit_durations"]
+##        print
+##        matplot.plot(numpy.asarray(this_lc['lc'].index), numpy.asarray(this_lc['lc'].flux))
+##        matplot.show()
 
 
 
