@@ -33,7 +33,7 @@ def main():
     ## --- The following parameters are for the bls_pulse input ---
     ## What do you want to use for a segment size in the bls_pulse algorithm?
     segment_size = 10
-    min_duration = 0.01
+    min_duration = 0.0416667
     max_duration = 2.0
     n_bins_blspulse = 100
     ## ------------------------------------------------------------
