@@ -83,11 +83,11 @@ def bls_vec_simulator(period=5, transit_ratio=0.025, transit_depth=0.010, phase=
     ## NOTE (SWF): There is a bug here because if the startings phase of the transit is close to 1.0 and the duration pushes it over, it will not wrap properly as written.
     light_curve.flux[(transit_phase > phase) & (transit_phase < (phase + transit_ratio))] -= transit_depth
 
-    # remove mean
-    light_curve.flux -= light_curve.flux.mean()
-
     # add white noise
     light_curve.flux += np.random.normal(loc=0, scale=white_noise_std, size=n_samples)
+
+    # remove mean
+    light_curve.flux -= light_curve.flux.mean()
 
     # create array of transit midpoint times, depths, and durations for passing back to calling program.  used so the calling program can compare results to the (known) transit parameters created here.
     # first, calculate the precise *phase* of central transit, keeping in mind this might be > 1.0, but will not be > 2.0

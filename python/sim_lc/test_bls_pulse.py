@@ -5,9 +5,11 @@ import logging
 import random
 import math
 import bls_vec_simulator
+import bls_pulse_vec
 
 import numpy
 import matplotlib.pyplot as matplot
+import matplotlib.transforms
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -73,12 +75,12 @@ def main():
     ## Create the simulated lightcurves.
     for p, d, dr, ph in zip(period_list, depth_list, duration_ratio_list, phase_list):
         this_lc = bls_vec_simulator.bls_vec_simulator(p, dr, d, ph, signal_to_noise, n_samples, baseline)
-##        print this_lc["transit_times"]
-##        print this_lc["transit_depths"]
-##        print this_lc["transit_durations"]
-##        print
-##        matplot.plot(numpy.asarray(this_lc['lc'].index), numpy.asarray(this_lc['lc'].flux))
-##        matplot.show()
+
+        ## Run the lightcurve through bls_pulse_vec.
+        these_srs = bls_pulse_vec.bls_pulse_vec(this_lc['lc'], [p], d-0.1, d+0.1, 100)
+        print len(these_srs)
+        exit()
+        
 
 
 
