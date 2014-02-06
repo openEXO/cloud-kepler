@@ -2,6 +2,7 @@ from __future__ import division
 import numpy as np
 import pandas as pd
 from collections import OrderedDict
+import exceptions
 
 def detrend_mean_remove(flux, period):
     """Detrend removing the mean of each period
@@ -45,6 +46,16 @@ def bls_pulse_vec(light_curve, period, min_duration, max_duration, n_bins, detre
     SR : pd.Series
         Normalized Signal Residual as defined by Kovacs, 2002
     """
+
+    # check inputs
+    if period <= 0.0:
+        raise exceptions.ValueError("Period must be > 0.")
+    if min_duration <= 0.0:
+        raise exceptions.ValueError("Min. duration must be > 0.")
+    if max_duration <= min_duration:
+        raise exceptions.ValueError("Max. duration must be > min. duration.")
+    if n_bins <= 1:
+        raise exceptions.ValueError("Number of bins must be > 1.")
 
     n_bins_min_duration = max(np.floor(min_duration*n_bins), 1)
     n_bins_max_duration = np.ceil(max_duration*n_bins)
