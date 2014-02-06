@@ -2,6 +2,7 @@ from __future__ import division
 import numpy as np
 import pandas as pd
 from collections import OrderedDict
+import exceptions
 
 def detrend_mean_remove(flux, period):
     """Detrend removing the mean of each period
@@ -22,7 +23,7 @@ def reindex_to_matrix(series, matrix):
     """
     return np.array(series.reindex(matrix.flatten())).reshape(matrix.shape)
 
-def bls_pulse_vec(light_curve, periods, min_duration, max_duration, n_bins, detrend=detrend_mean_remove):
+def bls_pulse_vec(light_curve, period, min_duration, max_duration, n_bins, detrend=detrend_mean_remove):
     """Box Least Square fitting algorithm, vectorized implementation
 
     Kovacs, 2002
@@ -31,8 +32,8 @@ def bls_pulse_vec(light_curve, periods, min_duration, max_duration, n_bins, detr
     ==========
     light_curve : pd.DataFrame
         light curve with timing information in days (index), flux and flux error
-    periods : list or array
-        list of periods to be tested with BLS, for a single period just use [period]
+    period : float
+        period to be tested with BLS, for a single period just use [period]
     min_duration, max_duration : float, float
         minimum/maximum duration of the transit as a fraction of period
     n_bins : integer
@@ -46,43 +47,48 @@ def bls_pulse_vec(light_curve, periods, min_duration, max_duration, n_bins, detr
         Normalized Signal Residual as defined by Kovacs, 2002
     """
 
-    SR = OrderedDict()
+    # check inputs
+    if period <= 0.0:
+        raise exceptions.ValueError("Period must be > 0.")
+    if min_duration <= 0.0:
+        raise exceptions.ValueError("Min. duration must be > 0.")
+    if max_duration <= min_duration:
+        raise exceptions.ValueError("Max. duration must be > min. duration.")
+    if n_bins <= 1:
+        raise exceptions.ValueError("Number of bins must be > 1.")
 
-    for period in periods:
+    n_bins_min_duration = max(np.floor(min_duration*n_bins), 1)
+    n_bins_max_duration = np.ceil(max_duration*n_bins)
 
-        n_bins_min_duration = max(np.floor(min_duration*n_bins), 1)
-        n_bins_max_duration = np.ceil(max_duration*n_bins)
+    phase = np.remainder(np.array(light_curve.index),period) / period
+    # pd.cut slices phase in n_bins equally spaced bins
+    phase_bins = pd.cut(phase, n_bins)
 
-        phase = np.remainder(np.array(light_curve.index),period) / period
-        # pd.cut slices phase in n_bins equally spaced bins
-        phase_bins = pd.cut(phase, n_bins)
+    detrended_flux = detrend(light_curve, period)
 
-        detrended_flux = detrend(light_curve, period)
+    folded_light_curve = detrended_flux.groupby(phase_bins).mean()
+    folded_light_curve["samples"] = light_curve.flux.groupby(phase_bins).count()
+    folded_light_curve = folded_light_curve.reset_index()
+    
+    i1 = np.arange(n_bins - n_bins_min_duration)[:,None]
+    dur = np.arange(0, n_bins_max_duration+1)
+    matrix = i1 + dur
+    # matrix is the grid of indices to be used for evaluating SR
+    # i1 is vertical, i2 is horizontal
+    # each row is a segment, for example row 2 has bin indices from 2 to 6
+    # 1 2 3 4 5
+    # 2 3 4 5 6
+    # 3 4 5 6 7
 
-        folded_light_curve = detrended_flux.groupby(phase_bins).mean()
-        folded_light_curve["samples"] = light_curve.flux.groupby(phase_bins).count()
-        folded_light_curve = folded_light_curve.reset_index()
-        
-        i1 = np.arange(n_bins - n_bins_min_duration)[:,None]
-        dur = np.arange(0, n_bins_max_duration+1)
-        matrix = i1 + dur
-        # matrix is the grid of indices to be used for evaluating SR
-        # i1 is vertical, i2 is horizontal
-        # each row is a segment, for example row 2 has bin indices from 2 to 6
-        # 1 2 3 4 5
-        # 2 3 4 5 6
-        # 3 4 5 6 7
+    # evaluates sr on a grid of values in a single step (loop with C performance)
+    r = reindex_to_matrix(folded_light_curve.samples, matrix).cumsum(axis=1)
+    s = reindex_to_matrix(folded_light_curve.flux, matrix).cumsum(axis=1)
+    sr = s**2 / (r * (len(light_curve) - r))
 
-        # evaluates sr on a grid of values in a single step (loop with C performance)
-        r = reindex_to_matrix(folded_light_curve.samples, matrix).cumsum(axis=1)
-        s = reindex_to_matrix(folded_light_curve.flux, matrix).cumsum(axis=1)
-        sr = s**2 / (r * (len(light_curve) - r))
+    sr[:,dur <= n_bins_min_duration] = np.nan
 
-        sr[:,dur <= n_bins_min_duration] = np.nan
-
-        SR[period] = np.ma.masked_invalid(sr).max()
+    SR = np.ma.masked_invalid(sr).max(axis=1)
 
     SR = pd.Series(SR)
     SR = SR**0.5
-    SR /= SR.max()
     return SR
