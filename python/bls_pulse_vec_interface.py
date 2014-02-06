@@ -6,6 +6,7 @@ import logging
 import sys
 import math
 from optparse import OptionParser
+from collections import OrderedDict
 
 def read_mapper_output(file, separator='\t'):
     """Read stdin input"""
@@ -27,7 +28,6 @@ def encode_arr(arr):
     """64bit encodes numpy arrays"""
     return base64.b64encode(compress(simplejson.dumps(arr.tolist())))
 
-
 def main():
     parser = OptionParser(usage="%prog -p [-m] [-d] [-b] [--direction]", version="%prog 1.0")
     setup_input_options(parser)
@@ -44,5 +44,7 @@ def main():
 
     input_data = read_mapper_output(sys.stdin)
 
+    output = OrderedDict()
     for kic_id, quarters, light_curve in input_data:
-        bls_pulse_vec(light_curve, period, opts.min_duration, opts.max_duration, n_bins, detrend=detrend_mean_remove)
+        id_string = kic_id + quarters.replace(",","_").translate(None, "[]' ")
+        output[id_string] = bls_pulse_vec(light_curve, opts.segment, opts.min_duration, opts.max_duration, n_bins)
