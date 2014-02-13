@@ -76,7 +76,7 @@ def convert_duration_to_bins(duration_days, nbins, segment_size, duration_type):
 ############################################################################################
 ## Convert the requested duration (in days) to a duration in units of bins.
 ############################################################################################
-def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_segment, binFlx, ppb, segs):
+def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_segment, binFlx, ppb, this_seg):
 
     ## Note (SWF):  I want to double check the math here matches what is done in Kovacs et al. (2002).  On the TO-DO list...
 
@@ -103,7 +103,7 @@ def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_segment, binFl
                     thisDuration = i2 - i1 + 1
                     thisPhase = i1
                     thisDepth = -s*n/(r*(n-r))
-                    thisMidTime = segs[0] + 0.5*(i1+i2)*trial_segment/nbins
+                    thisMidTime = this_seg[0] + 0.5*(i1+i2)*trial_segment/nbins
     ## Return a tuple containing the Signal Residue and corresponding signal information.  If no Signal Residue was calculated in the loop above, then these will all be NaN's.
     return (best_SR, thisDuration, thisPhase, thisDepth, thisMidTime)
 ############################################################################################
@@ -137,11 +137,6 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
         mindur = convert_duration_to_bins(min_duration, nbins, segment_size, duration_type="min")
         maxdur = convert_duration_to_bins(max_duration, nbins, segment_size, duration_type="max")
 
-        ## Define the minimum "r" value.  Note that "r" is the sum of the weights on flux at full depth.
-        ## Note:  The sample rate of Kepler long-cadence data is (within a second) 0.02044 days.
-        lc_samplerate = 0.02044
-        r_min = max(1,int(mindur/lc_samplerate))
-
         ## Extract lightcurve information and mold it into numpy arrays.
         ## First identify which elements are not finite and remove them.
         lc_nparray = numpy.array(lightcurve)
@@ -150,6 +145,13 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
         time = lc_nparray[:,0]
         flux = lc_nparray[:,1]
         
+        ## Define the minimum "r" value.  Note that "r" is the sum of the weights on flux at full depth.
+        ## Note:  The sample rate of Kepler long-cadence data is (within a second) 0.02044 days.  Rather than hard-code this, we determine the sample rate from the input lightcurve as just the median value of the difference between adjacent observations.  Assuming the input lightcurve has enough points, then this will effectively avoid issues caused by gaps in the lightcurve, since we assume that *most* of the data points in the lightcurve array will be taken at the nominal sampling.  We also do this so that, if we are sending simulated data at a different cadence than the Kepler long-cadence, then we don't have to add conditionals to the code.
+        lc_samplerate = numpy.median(numpy.diff(time))
+
+        ## The min. r value to consider is either the typical number of Kepler data points expected in a signal that is min_duration long, or a single data point, whichever is larger.
+        r_min = int(math.ceil(min_duration / lc_samplerate))
+
         ## Calculate mean of the flux.
         mean_flux_val = numpy.mean(flux)
 
@@ -175,17 +177,18 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
                 txt = 'KIC'+kic_id+'|Segment  '+ str(i+1) + ' out of ' +str(len(segments))
                 logger.info(txt)
 
-            ## Default this segments output values to NaN.  If a valid SR_Max is found, these will be updated with finite values.
+            ## Default this segment's output values to NaN.  If a valid SR_Max is found, these will be updated with finite values.
             srMax = numpy.append(srMax, numpy.nan)
             transitDuration = numpy.append(transitDuration, numpy.nan)
             transitPhase = numpy.append(transitPhase, numpy.nan)
             transitMidTime = numpy.append(transitMidTime, numpy.nan)
             transitDepth   = numpy.append(transitDepth, numpy.nan)
 
-            ## Bin the data points.
-            l,segs = seg
-            segs = numpy.array(segs)
-            n = segs.size
+            ## Bin the data points.  First extract the segment number and segment array, make sure the array is a numpy array type, count how many points in this segment.
+            l,this_seg = seg
+            if type(this_seg).__module__ != numpy.__name__:
+                this_seg = numpy.array(this_seg)
+            n = this_seg.size
 
             ## Make sure the number of bins is not greater than the number of data points in this segment.
             nbins = int(n_bins)
@@ -198,7 +201,7 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
 
             ## Normalize the phase.
             ## Note: the following line will not maintain absolute phase because it redefines it every segment.
-            segSet = segs - segs[0]
+            segSet = this_seg - this_seg[0]
             phase = segSet/segment_size - numpy.floor(segSet/segment_size)
             bin = numpy.floor(phase * nbins)
 
@@ -212,7 +215,7 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
             
             ## Determine SR_Max.  The return tuple consists of:
             ##      (Signal Residue, Signal Duration, Signal Phase, Signal Depth, Signal MidTime)
-            sr_tuple = calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, segment_size, binFlx, ppb, segs)
+            sr_tuple = calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, segment_size, binFlx, ppb, this_seg)
             ## If the Signal Residue is finite, then we need to add these parameters to our output storage array.
             if numpy.isfinite(sr_tuple[0]):
                 srMax[-1] = sr_tuple[0]
