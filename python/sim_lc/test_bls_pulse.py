@@ -80,7 +80,7 @@ def main():
     ##  period (days)
     ##  transit duration (as a ratio of the transit duration to the orbital period)
     ##  transit depth (in normalized units)
-    ##  phase shift (we will use 0.0 for now for simplicity)
+    ##  phase shift
     ##  signal-to-noise (ratio of transit depth to standard deviation of the white noise)
     ##  n_samples (the number of fixed time samples during the time span)
     ##  time_span (the total time baseline of the simulated lightcurve, in days)

@@ -30,7 +30,7 @@ def find_phases_near_phase0(phases, phase_t0):
     while phases[i] < phase_t0:
         i += 1
     # now the index "i" should contain the first transit phase that is > t_0, and the previous element should be the first phase that is < t_0
-    if i >= 0:
+    if i > 0:
         return (i-1,i)
     else:
         raise BLSVecSimError("Error: Straddled index can not be the first element in the list.")
