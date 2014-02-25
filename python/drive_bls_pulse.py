@@ -42,7 +42,7 @@ def check_input_options(parser,opts):
 
 
 ############################################################################################
-## This class defines a generic Exception to use for errors raised in DRIVE_MAKE_LC and is specific to this module.  It simply returns the given value when raising the exception, e.g., raise HSTSpecPrevError("Print this string") -> __main__.MyError: 'Print this string.'
+## This class defines a generic Exception to use for errors raised in DRIVE_MAKE_LC and is specific to this module.  It simply returns the given value when raising the exception, e.g., raise DriveBLSPulseError("Print this string") -> __main__.MyError: 'Print this string.'
 ############################################################################################
 class DriveBLSPulseError(Exception):
     def __init__(self, value):

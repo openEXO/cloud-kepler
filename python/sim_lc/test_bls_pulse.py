@@ -35,7 +35,7 @@ def main():
     segment_size = 10
     min_duration = 0.0416667
     max_duration = 2.0
-    n_bins_blspulse = 100
+    n_bins_blspulse = 1000
     ## ------------------------------------------------------------
 
     ## How many total lightcurves to simulate?

@@ -15,8 +15,21 @@ import logging
 import sys
 import math
 
+import matplotlib.pyplot as matplot
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+############################################################################################
+
+
+############################################################################################
+## This class defines a generic Exception to use for errors raised in BLS_PULSE and is specific to this module.  It simply returns the given value when raising the exception, e.g., raise BLSPulseError("Print this string") -> __main__.MyError: 'Print this string.'
+############################################################################################
+class BLSPulseError(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
 ############################################################################################
 
 
@@ -158,8 +171,9 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
         ## Create a version of the flux that has had the mean subtracted.
         flux_minus_mean = flux - mean_flux_val
 
-        ## Divide the input time array into segments.
+        ## Divide the input time and flux arrays into segments.
         segments = [(x,time[x:x+int(segment_size/lc_samplerate)]) for x in xrange(0,len(time),int(segment_size/lc_samplerate))]
+        flux_segments = [(x,flux_minus_mean[x:x+int(segment_size/lc_samplerate)]) for x in xrange(0,len(flux_minus_mean),int(segment_size/lc_samplerate))]
 
         ## Initialize storage arrays for output values.  We don't know how many signals we will find, so for now these are instantiated without a length and we make use of the (more inefficient) "append" method in numpy to grow the array.  This could be one area that could be made more efficient if speed is a concern, e.g., by making these a sufficiently large size, filling them in starting from the first index, and then remove those that are empty at the end.  A sufficiently large size could be something like the time baseline of the lightcurve divided by the min. transit duration being considered, for example.
         ## I think we sort of do now how long they are going to be, we are finding the best signal for each segment so it'll come out equal to the number of segments. It was just programmed this way, probably inefficient though.
@@ -168,10 +182,10 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
         transitPhase = numpy.array([])
         transitMidTime = numpy.array([])
         transitDepth   = numpy.array([])
-
+        
         ## For each segment of this lightcurve, bin the data points into appropriate segments, normalize the binned fluxes, and calculate SR_Max.  If the new SR value is greater than the previous SR_Max value, store it as a potential signal.
         ## NOTE: "sr" is the Signal Residue as defined in the original BLS paper by Kovacs et al. (2002), A&A, 391, 377.
-        for i,seg in enumerate(segments):
+        for i,seg,flux_seg in zip(range(len(segments)),segments,flux_segments):
             ## Print progress information to screen, if verbose is set.
             if verbose:
                 txt = 'KIC'+kic_id+'|Segment  '+ str(i+1) + ' out of ' +str(len(segments))
@@ -186,11 +200,14 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
 
             ## Bin the data points.  First extract the segment number and segment array, make sure the array is a numpy array type, count how many points in this segment.
             l,this_seg = seg
+            ll,this_flux_seg = flux_seg
             if type(this_seg).__module__ != numpy.__name__:
                 this_seg = numpy.array(this_seg)
+            if type(this_flux_seg).__module__ != numpy.__name__:
+                this_flux_seg = numpy.array(this_flux_seg)
             n = this_seg.size
 
-            ## Make sure the number of bins is not greater than the number of data points in this segment.
+            ## Make sure the number of bins is not greater than the number of data points in this segment.  Initialize the arrays that will hold the binned flux and the number of points per bin.
             nbins = int(n_bins)
             if n < nbins:
                 nbins = n
@@ -199,12 +216,27 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
             ppb = numpy.zeros(nbins)
             binFlx = numpy.zeros(nbins)
 
-            ## Normalize the phase.
+            ## Try binning it my way...
+            bin_slices = numpy.linspace(this_seg[0], this_seg[-1], nbins, True)
+            ## Get the indices of the original array belonging to each bin.
+            bin_memberships = numpy.digitize(this_seg, bin_slices, False)
+            ## Because the slices are defined so that the last point is the final right-hand bin, but digitize must include right-hand boundaries for all slices or none, we just manually adjust the bin location of the last point.
+            bin_memberships[-1] = bin_memberships[-2]
+            ## Compute the mean of the timestamps in each bin.
+            binned_times = [this_seg[bin_memberships == i].mean() for i in range (1, len(bin_slices))]
+            binned_fluxes = [this_flux_seg[bin_memberships == i].mean() for i in range (1, len(bin_slices))]
+
+            ## THIS IS A STUB WHERE WE WOULD LOCALLY DE-TREND THIS SECTION OF THE LIGHTCURVE!
+            exit()
+            
+            """ This is old code left over from the past binning, I thin the above method is easier to read, preserves absolute time information, and may even be computationally faster?
+            -----------------------------------------------------------------------------------------------
+            ## Make the times relative to the first time in this segment.  NOTE from SWF:  Is this really necessary?  We should preserve the phase if possible....
             ## Note: the following line will not maintain absolute phase because it redefines it every segment.
             segSet = this_seg - this_seg[0]
             phase = segSet/segment_size - numpy.floor(segSet/segment_size)
             bin = numpy.floor(phase * nbins)
-
+            
             for x in xrange(n):
                 ppb[int(bin[x])] += 1
                 ## "l" is carried through from the original definition of the segments to make sure time segments sync up with their respective flux indices.
@@ -212,7 +244,9 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
                 ## Remove the mean flux on a segment by segment basis.
                 ## Note: We should use a detrended flux eventually.
                 binFlx = binFlx - numpy.mean(binFlx)
-            
+            -----------------------------------------------------------------------------------------------
+            """
+
             ## Determine SR_Max.  The return tuple consists of:
             ##      (Signal Residue, Signal Duration, Signal Phase, Signal Depth, Signal MidTime)
             sr_tuple = calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, segment_size, binFlx, ppb, this_seg)
