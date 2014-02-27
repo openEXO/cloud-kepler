@@ -32,7 +32,7 @@ def main():
 
     ## --- The following parameters are for the bls_pulse input ---
     ## What do you want to use for a segment size in the bls_pulse algorithm?
-    segment_size = 10
+    segment_size = 10 ## in days.
     min_duration = 0.0416667
     max_duration = 2.0
     n_bins_blspulse = 1000
@@ -98,7 +98,7 @@ def main():
 
         ## Run the lightcurve through bls_pulse_vec.
         these_srs = bls_pulse.main(segment_size, lc_string, min_duration, max_duration, n_bins_blspulse, -1, "normal")
-        print these_srs
+        exit()
         
 
 

@@ -173,9 +173,7 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
         flux_minus_mean = flux - mean_flux_val
 
         ## Divide the input time and flux arrays into segments.
-##        segments = [(x,time[x:x+int(segment_size/lc_samplerate)]) for x in xrange(0,len(time),int(segment_size/lc_samplerate))]
-        time_len = len(time)
-        seg_stepsize = int(round(time_len / segment_size))
+        seg_stepsize = int(round(segment_size / lc_samplerate))
         segments = [(x,time[x:x+seg_stepsize]) for x in xrange(0,len(time),seg_stepsize)]
         flux_segments = [(x,flux_minus_mean[x:x+seg_stepsize]) for x in xrange(0,len(flux_minus_mean),seg_stepsize)]
 
