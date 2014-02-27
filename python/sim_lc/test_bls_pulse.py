@@ -98,8 +98,7 @@ def main():
 
         ## Run the lightcurve through bls_pulse_vec.
         these_srs = bls_pulse.main(segment_size, lc_string, min_duration, max_duration, n_bins_blspulse, -1, "normal")
-##        print len(these_srs)
-        exit()
+        print these_srs
         
 
 
