@@ -32,7 +32,7 @@ def main():
 
     ## --- The following parameters are for the bls_pulse input ---
     ## What do you want to use for a segment size in the bls_pulse algorithm?
-    segment_size = 10 ## in days.
+    segment_size = 5 ## in days.
     min_duration = 0.0416667
     max_duration = 2.0
     n_bins_blspulse = 1000
@@ -73,7 +73,7 @@ def main():
     phase_list = [random.uniform(phase_range[0], phase_range[1]) for x in range(n_lcs)]
 
     ## Convert the duration (in hours) into transit duration ratios for use in "simulate_box_lightcurve".
-    ## ratio = duration (hours) / 24. * period (days)
+    ## ratio = duration (hours) / (24. * period (days))
     duration_ratio_list = [x/(24.*y) for x,y in zip(duration_list, period_list)]
 
     ## Andrea Zonca's "simulate_box_lightcurve" takes in the following parameters:
@@ -98,6 +98,8 @@ def main():
 
         ## Run the lightcurve through bls_pulse_vec.
         these_srs = bls_pulse.main(segment_size, lc_string, min_duration, max_duration, n_bins_blspulse, -1, "normal")
+        for xx,yy,zz in zip(this_lc['transit_times'], this_lc['transit_depths'], this_lc['transit_durations']):
+            print xx, yy, zz
         exit()
         
 

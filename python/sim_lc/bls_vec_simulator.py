@@ -99,16 +99,14 @@ def bls_vec_simulator(period=5, transit_ratio=0.025, transit_depth=0.010, phase=
     straddle_phases = [float(x) for x in transit_phase[phase_t0_indexes[0]:phase_t0_indexes[1]+1]]
     straddle_times = [float(x) for x in time[phase_t0_indexes[0]:phase_t0_indexes[1]+1]]
     time_t0 = np.interp(phase_t0, straddle_phases, straddle_times)
-##    print straddle_phases[0], phase_t0, straddle_phases[1]
-##    print straddle_times[0], time_t0, straddle_times[1]
     transittimes = []
     depths = []
     durations = []
     i = 0
     while i*period+time_t0 <= time[-1]:
         transittimes.append(i*period+time_t0)
-        depths.append(transit_depth)
-        durations.append(transit_ratio*period/24.)
+        depths.append(-1. * transit_depth)
+        durations.append(transit_ratio*period*24.)
         i+=1
     
     return {'lc':light_curve, 'transit_times':transittimes, 'transit_depths':depths, 'transit_durations':durations}

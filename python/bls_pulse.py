@@ -90,7 +90,7 @@ def convert_duration_to_bins(duration_days, nbins, segment_size, duration_type):
 ############################################################################################
 ## Convert the requested duration (in days) to a duration in units of bins.
 ############################################################################################
-def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_segment, binFlx, ppb, this_seg):
+def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_segment, binFlx, ppb, this_seg, lc_samplerate):
 
     ## Note (SWF):  I want to double check the math here matches what is done in Kovacs et al. (2002).  On the TO-DO list...
 
@@ -114,9 +114,16 @@ def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_segment, binFl
                 sr = 1 * (s**2 / (r * (n - r)))
                 if sr > best_SR or numpy.isnan(best_SR):
                     best_SR = sr
-                    thisDuration = i2 - i1 + 1
+                    ## Report the duration in units of hours, not bins.
+                    ## Old way, in units of bins.
+                    ## thisDuration = i2 - i1 + 1
+                    thisDuration = sum(ppb[i1:i2]) * lc_samplerate * 24.
                     thisPhase = i1
-                    thisDepth = -s*n/(r*(n-r))
+                    ## Old way of calculating the depth was some sort of "average" depth across the binned points, but I found that binned points that happen during ingress/egress would greatly affect this, instead just take the min. flux level during the event in question.
+                    ## thisDepth = -s*n/(r*(n-r))
+                    curDepth = binFlx[i2]
+                    if curDepth < thisDepth or not numpy.isfinite(thisDepth):
+                        thisDepth = binFlx[i2]
                     thisMidTime = this_seg[0] + 0.5*(i1+i2)*trial_segment/nbins
     ## Return a tuple containing the Signal Residue and corresponding signal information.  If no Signal Residue was calculated in the loop above, then these will all be NaN's.
     return (best_SR, thisDuration, thisPhase, thisDepth, thisMidTime)
@@ -233,7 +240,7 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
             
             ## Determine SR_Max.  The return tuple consists of:
             ##      (Signal Residue, Signal Duration, Signal Phase, Signal Depth, Signal MidTime)
-            sr_tuple = calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, segment_size, binned_fluxes, ppb, this_seg)
+            sr_tuple = calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, segment_size, binned_fluxes, ppb, this_seg, lc_samplerate)
             ## If the Signal Residue is finite, then we need to add these parameters to our output storage array.
             if numpy.isfinite(sr_tuple[0]):
                 srMax[-1] = sr_tuple[0]
