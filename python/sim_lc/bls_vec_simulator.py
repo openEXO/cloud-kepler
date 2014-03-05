@@ -69,7 +69,7 @@ def bls_vec_simulator(period=5, transit_ratio=0.025, transit_depth=0.010, phase=
        transit_durations: durations [list]: A List of transit durations (in hours), used for comparing results from other programs to see which transits were found.
     """
 
-    time = pd.Index(np.linspace(0, time_span, num=n_samples), name="Time [d]")
+    time = pd.Index(np.linspace(0, time_span, num=n_samples), name="time")
     transit_phase = np.remainder(time, period)/period
     white_noise_std = transit_depth/signal_to_noise
 
