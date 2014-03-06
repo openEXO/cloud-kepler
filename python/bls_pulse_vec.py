@@ -37,13 +37,13 @@ def compute_signal_residual(binned_segment, matrix, duration, n_bins_min_duratio
 
     sr[:,duration <= n_bins_min_duration] = np.nan
     SR_index = np.unravel_index(np.ma.masked_invalid(sr).argmax(), sr.shape)
-    i1 = SR_index[0]
-    i2 = matrix[SR_index]
+    i1 = int(SR_index[0])
+    i2 = int(matrix[SR_index])
     return pd.Series(dict(
                 phase=i1,
-                duration=i2-i1+1,
+                duration=binned_segment_indexed.samples[i1:i2].sum(),
                 signal_residual=sr[SR_index]**0.5,
-                depth=-s[SR_index]*n/(r[SR_index]*(n-r[SR_index])), 
+                depth=binned_segment.flux[i1:i2].min(),
                 midtime=0.5*(i1+i2)
                     ))
 
@@ -94,6 +94,7 @@ def bls_pulse_vec(light_curve, segment_size, min_duration, max_duration, n_bins,
     n_bins_max_duration = np.ceil(max_duration/segment_size*n_bins)
     light_curve["segment"] = np.floor(np.array(light_curve.index).astype(np.float)/segment_size)
     light_curve["phase"] = np.remainder(np.array(light_curve.index),segment_size) / segment_size
+    sample_rate = np.median(np.diff(np.array(light_curve.index).astype(np.float)))
 
     # define equally spaced bins
     bins = np.linspace(0, 1, num=n_bins)
@@ -114,4 +115,5 @@ def bls_pulse_vec(light_curve, segment_size, min_duration, max_duration, n_bins,
     results = results.dropna()
     results["midtime"] *= segment_size/ n_bins
     results["midtime"] += light_curve.reset_index().groupby("segment").time.min()
+    results["duration"] *= sample_rate * 24.
     return results
