@@ -97,7 +97,6 @@ def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_segment, binFl
     ## Initialize output values to NaN.
     sr = numpy.nan
     thisDuration = numpy.nan
-    thisPhase = numpy.nan
     thisDepth = numpy.nan
     thisMidTime = numpy.nan
 
@@ -113,20 +112,24 @@ def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_segment, binFl
             if i2 - i1 > mindur and r >= r_min and direction*s >= 0:
                 sr = 1 * (s**2 / (r * (n - r)))
                 if sr > best_SR or numpy.isnan(best_SR):
+                    ## Update the best SR values.
                     best_SR = sr
+
                     ## Report the duration in units of hours, not bins.
                     ## Old way, in units of bins.
                     ## thisDuration = i2 - i1 + 1
-                    thisDuration = sum(ppb[i1:i2]) * lc_samplerate * 24.
-                    thisPhase = i1
+                    thisDuration = sum(ppb[i1:i2]) * lc_samplerate * 24.                    
+
                     ## Old way of calculating the depth was some sort of "average" depth across the binned points, but I found that binned points that happen during ingress/egress would greatly affect this, instead just take the min. flux level during the event in question.
                     ## thisDepth = -s*n/(r*(n-r))
                     curDepth = binFlx[i2]
                     if curDepth < thisDepth or not numpy.isfinite(thisDepth):
                         thisDepth = binFlx[i2]
+
+                    ## Report the transit midtime in units of days.
                     thisMidTime = this_seg[0] + 0.5*(i1+i2)*trial_segment/nbins
     ## Return a tuple containing the Signal Residue and corresponding signal information.  If no Signal Residue was calculated in the loop above, then these will all be NaN's.
-    return (best_SR, thisDuration, thisPhase, thisDepth, thisMidTime)
+    return (best_SR, thisDuration, thisDepth, thisMidTime)
 ############################################################################################
 
 
@@ -188,7 +191,6 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
         ## I think we sort of do now how long they are going to be, we are finding the best signal for each segment so it'll come out equal to the number of segments. It was just programmed this way, probably inefficient though.
         srMax = numpy.array([])
         transitDuration = numpy.array([])
-        transitPhase = numpy.array([])
         transitMidTime = numpy.array([])
         transitDepth   = numpy.array([])
         
@@ -203,7 +205,6 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
             ## Default this segment's output values to NaN.  If a valid SR_Max is found, these will be updated with finite values.
             srMax = numpy.append(srMax, numpy.nan)
             transitDuration = numpy.append(transitDuration, numpy.nan)
-            transitPhase = numpy.append(transitPhase, numpy.nan)
             transitMidTime = numpy.append(transitMidTime, numpy.nan)
             transitDepth   = numpy.append(transitDepth, numpy.nan)
 
@@ -239,15 +240,14 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
             ## THIS IS A STUB WHERE WE WOULD LOCALLY DE-TREND THIS SECTION OF THE LIGHTCURVE!
             
             ## Determine SR_Max.  The return tuple consists of:
-            ##      (Signal Residue, Signal Duration, Signal Phase, Signal Depth, Signal MidTime)
+            ##      (Signal Residue, Signal Duration, Signal Depth, Signal MidTime)
             sr_tuple = calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, segment_size, binned_fluxes, ppb, this_seg, lc_samplerate)
             ## If the Signal Residue is finite, then we need to add these parameters to our output storage array.
             if numpy.isfinite(sr_tuple[0]):
                 srMax[-1] = sr_tuple[0]
                 transitDuration[-1] = sr_tuple[1]
-                transitPhase[-1] = sr_tuple[2]
-                transitDepth[-1] = sr_tuple[3]
-                transitMidTime[-1] = sr_tuple[4]
+                transitDepth[-1] = sr_tuple[2]
+                transitMidTime[-1] = sr_tuple[3]
                 
         ## Take the square root of the Signal Residue.  Note, to save computation time we can probably avoid doing the SQRT here...
         srMax = srMax**.5
@@ -255,7 +255,6 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
         ## Print output.
         if print_format == 'encoded':
             print "\t".join(map(str,[kic_id, encode_arr(srMax),
-                                     encode_arr(transitPhase),
                                      encode_arr(transitDuration),
                                      encode_arr(transitDepth),
                                      encode_arr(transitMidTime)]))
@@ -264,9 +263,9 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
             print "Kepler " + kic_id
             print "Quarters: " + quarters
             print "-" * 80
-            print '{0: <7s} {1: <13s} {2: <10s} {3: <10s} {4: <9s} {5: <13s}'.format('Segment','srMax', 'Phase', 'Duration', 'Depth', 'MidTime')
+            print '{0: <7s} {1: <13s} {2: <10s} {3: <9s} {4: <13s}'.format('Segment','srMax', 'Duration', 'Depth', 'MidTime')
             for ii,seq in enumerate(segments):
-                print '{0: <7d} {1: <13.6f} {2: <10.6f} {3: <10.6f} {4: <9.6f} {5: <13.6f}'.format(ii, srMax[ii], transitPhase[ii], transitDuration[ii], transitDepth[ii], transitMidTime[ii])
+                print '{0: <7d} {1: <13.6f} {2: <10.6f} {3: <9.6f} {4: <13.6f}'.format(ii, srMax[ii], transitDuration[ii], transitDepth[ii], transitMidTime[ii])
             print "-" * 80
             print "\n"
 
@@ -274,7 +273,6 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
         return_data = pd.DataFrame({
                 "srMaxVals": srMax,
                 "durations": transitDuration,
-                "phases": transitPhase,
                 "depths":transitDepth,
                 "midtimes":transitMidTime
                 },index=pd.Index(range(len(segments))))
