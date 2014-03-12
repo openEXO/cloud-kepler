@@ -41,6 +41,9 @@ def main():
     ## How many total lightcurves to simulate?
     n_lcs = 10
 
+    ## Define the precision level that counts as a success.  The mid-transit times, durations, and depths must match the simulated lightcurve's transits to within this precision percentage.
+    precision_threshold = 0.1 ## +/- 10% (relative precision) allowed for now.
+
     ## How long of a baseline do you want to use (in days)?
     baseline = 90.
 
@@ -87,6 +90,8 @@ def main():
 
     ## Create the simulated lightcurves.
     for i, p, d, dr, ph in zip(starid_list, period_list, depth_list, duration_ratio_list, phase_list):
+        ## Print out status update.
+        print "TEST_BLS_PULSE: Test case # " + str(i) + "/" + str(n_lcs) + "..."
         this_lc = bls_vec_simulator.bls_vec_simulator(p, dr, d, ph, signal_to_noise, n_samples, baseline)
 
         ## Create a list of lists (a list of [time,flux,fluxerr]) to encode and pass onto bls_pulse.
@@ -97,13 +102,14 @@ def main():
         lc_string = cStringIO.StringIO(lc_string)
 
         ## Run the lightcurve through bls_pulse_vec.
-        these_srs = bls_pulse.main(segment_size, lc_string, min_duration, max_duration, n_bins_blspulse, -1, "normal")
-        for xx,yy,zz in zip(this_lc['transit_times'], this_lc['transit_depths'], this_lc['transit_durations']):
-            print xx, yy, zz
-        exit()
-        
+        these_srs = bls_pulse.main(segment_size, lc_string, min_duration, max_duration, n_bins_blspulse, -1, "none")
 
-
+        ## Compare to see if each of the simulated transits is found by BLS_PULSE.
+        for tnum,ttime,tdepth,tduration in zip(range(len(this_lc['transit_times'])), this_lc['transit_times'], this_lc['transit_depths'], this_lc['transit_durations']):
+            if numpy.nanmin(abs(ttime-these_srs["midtimes"].values)/ttime) <= precision_threshold and numpy.nanmin(abs(tdepth-these_srs["depths"].values)/tdepth) <= precision_threshold and numpy.nanmin(abs(tduration-these_srs["durations"].values)/tduration) <= precision_threshold:
+                print "   Transit {0: <3d}.....PASS".format(tnum)
+            else:
+                print "   Transit {0: <3d}...FAIL".format(tnum)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
