@@ -1,0 +1,3 @@
+[submodule "python/PyKE"]
+	path = python/PyKE
+	url = https://github.com/openEXO/PyKE.git
