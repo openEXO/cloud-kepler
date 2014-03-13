@@ -2,6 +2,7 @@ from __future__ import division
 import numpy as np
 import pandas as pd
 from collections import OrderedDict
+from PyKE.kepfit import lsqclip
 import exceptions
 
 def detrend_mean_remove(flux, period):
@@ -14,6 +15,24 @@ def detrend_mean_remove(flux, period):
     segment_ids = np.array(flux.reset_index().time/period).astype(np.int)
     # transform applies a function to each segment
     return flux.groupby(segment_ids).transform(mean_remove)
+
+def detrend_pyke_lsqclip(segment, order):
+    functype = 'poly' + str(order)
+    pinit = np.zeros(order + 1, dtype=np.float)
+    pinit[0] = segment.flux.mean()
+    
+    sigma_threshold = 3
+    niter = 3
+    logfile = "kepler.log"
+    verbose = True
+    time = np.array(segment.index).astype(np.double)
+    coeffs, errors, covar, iiter, sigma, chi2, dof, fit, plotx1, ploty1, status = \
+    lsqclip(functype, pinit, time, np.array(segment.flux), 
+            np.array(segment.flux_error),
+            sigma_threshold, sigma_threshold, niter, logfile, verbose)
+    trend = pd.Series(np.polyval(coeffs[::-1], time), index=segment.index)
+    
+    return coeffs[::-1], trend
 
 def reindex_to_matrix(series, matrix):
     """Reindexes a series on a 2d matrix of values
@@ -56,7 +75,7 @@ def phase_bin(segment, bins):
     del y["segment"]
     return y
 
-def bls_pulse_vec(light_curve, segment_size, min_duration, max_duration, n_bins, detrend=detrend_mean_remove):
+def bls_pulse_vec(light_curve, segment_size, min_duration, max_duration, n_bins, detrend_order=None):
     """Box Least Square fitting algorithm, vectorized implementation
 
     Kovacs, 2002
@@ -96,6 +115,13 @@ def bls_pulse_vec(light_curve, segment_size, min_duration, max_duration, n_bins,
     light_curve["phase"] = np.remainder(np.array(light_curve.index),segment_size) / segment_size
     sample_rate = np.median(np.diff(np.array(light_curve.index).astype(np.float)))
 
+    if detrend_order:
+        detrend_coefficients = {}
+        for segment_id, segment_data in light_curve.groupby("segment"):
+            if len(segment_data) > 100:
+                detrend_coefficients[segment_id], trend = detrend_pyke_lsqclip(segment_data, detrend_order)
+                light_curve.flux = light_curve.flux.subtract(trend, fill_value=0.)
+
     # define equally spaced bins
     bins = np.linspace(0, 1, num=n_bins)
 
@@ -116,4 +142,7 @@ def bls_pulse_vec(light_curve, segment_size, min_duration, max_duration, n_bins,
     results["midtime"] *= segment_size/ n_bins
     results["midtime"] += light_curve.reset_index().groupby("segment").time.min()
     results["duration"] *= sample_rate * 24.
-    return results
+    if detrend_order:
+        return results, detrend_coefficients
+    else:
+        return results
