@@ -42,7 +42,7 @@ def reindex_to_matrix(series, matrix):
     """
     return np.array(series.reindex(matrix.flatten())).reshape(matrix.shape)
 
-def compute_signal_residual(binned_segment, matrix, duration, n_bins_min_duration):
+def compute_signal_residual(binned_segment, matrix, duration, n_bins_min_duration, direction):
     """Run BLS algorithm on a binned segment
     
     Returns
@@ -53,18 +53,32 @@ def compute_signal_residual(binned_segment, matrix, duration, n_bins_min_duratio
     s = reindex_to_matrix(binned_segment_indexed.flux, matrix).cumsum(axis=1)
     n = binned_segment_indexed.samples.sum()
     sr = s**2 / (r * (n - r))
+    ## This is the product of the direction times the "s" value, used later to compare that the best SR matches the desired direction.
+    ds = direction * s
+
+#    import ipdb; ipdb.set_trace()
 
     sr[:,duration <= n_bins_min_duration] = np.nan
     SR_index = np.unravel_index(np.ma.masked_invalid(sr).argmax(), sr.shape)
     i1 = int(SR_index[0])
     i2 = int(matrix[SR_index])
-    return pd.Series(dict(
-                phase=i1,
-                duration=binned_segment_indexed.samples[i1:i2].sum(),
-                signal_residual=sr[SR_index]**0.5,
-                depth=binned_segment.flux[i1:i2].min(),
-                midtime=0.5*(i1+i2)
-                    ))
+    ## Make sure the best SR matches the desired direction.
+    if ds[SR_index] >= 0:
+        return pd.Series(dict(
+                phases=i1,
+                durations=binned_segment_indexed.samples[i1:i2].sum(),
+                signal_residuals=sr[SR_index]**0.5,
+                depths=binned_segment.flux[i1:i2].min(),
+                midtimes=0.5*(i1+i2)
+                ))
+    else:
+        return pd.Series(dict(
+                phases=np.nan,
+                durations=np.nan,
+                signal_residuals=np.nan,
+                depths=np.nan,
+                midtimes=np.nan
+                ))
 
 
 def phase_bin(segment, bins):
@@ -75,7 +89,7 @@ def phase_bin(segment, bins):
     del y["segment"]
     return y
 
-def bls_pulse_vec(light_curve, segment_size, min_duration, max_duration, n_bins, detrend_order=None):
+def bls_pulse_vec(light_curve, segment_size, min_duration, max_duration, n_bins, detrend_order=None, direction=0, remove_nan_segs=False):
     """Box Least Square fitting algorithm, vectorized implementation
 
     Kovacs, 2002
@@ -92,6 +106,8 @@ def bls_pulse_vec(light_curve, segment_size, min_duration, max_duration, n_bins,
         number of bins used for binning the folded light curve
     detrend : function
         function to be used for detrending the flux
+    direction : integer
+        defines whether transits (-1), anti-transits (+1) or both (0) should be considered, default is both (0)
     
     Returns
     =======
@@ -137,11 +153,11 @@ def bls_pulse_vec(light_curve, segment_size, min_duration, max_duration, n_bins,
     # 2 3 4 5 6
     # 3 4 5 6 7
 
-    results = phase_binned_segments.groupby(level="segment").apply(lambda x:compute_signal_residual(x, matrix=matrix, duration=duration, n_bins_min_duration=n_bins_min_duration))
-    results = results.dropna()
-    results["midtime"] *= segment_size/ n_bins
-    results["midtime"] += light_curve.reset_index().groupby("segment").time.min()
-    results["duration"] *= sample_rate * 24.
+    results = phase_binned_segments.groupby(level="segment").apply(lambda x:compute_signal_residual(x, matrix=matrix, duration=duration, n_bins_min_duration=n_bins_min_duration, direction=direction))
+    if remove_nan_segs: results = results.dropna()
+    results["midtimes"] *= segment_size/ n_bins
+    results["midtimes"] += light_curve.reset_index().groupby("segment").time.min()
+    results["durations"] *= sample_rate * 24.
     if detrend_order:
         return results, detrend_coefficients
     else:
