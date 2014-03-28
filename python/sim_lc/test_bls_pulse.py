@@ -9,11 +9,12 @@ import simplejson
 from zlib import compress
 import cStringIO
 import bls_vec_simulator
-import bls_pulse
+from bls_pulse import bls_pulse
 
 import numpy
 import matplotlib.pyplot as matplot
 import matplotlib.transforms
+import ipdb
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -32,9 +33,9 @@ def main():
 
     ## --- The following parameters are for the bls_pulse input ---
     ## What do you want to use for a segment size in the bls_pulse algorithm?
-    segment_size = 5 ## in days.
-    min_duration = 0.0416667
-    max_duration = 2.0
+    segment_size = 2 ## in days.
+    min_duration = 0.01 ## in days.
+    max_duration = 0.5 ## in days.
     n_bins_blspulse = 1000
     ## ------------------------------------------------------------
 
@@ -42,7 +43,9 @@ def main():
     n_lcs = 10
 
     ## Define the precision level that counts as a success.  The mid-transit times, durations, and depths must match the simulated lightcurve's transits to within this precision percentage.
-    precision_threshold = 0.1 ## +/- 10% (relative precision) allowed for now.
+    midtime_precision_threshold = 0.1 ## +/- 0.1 days for now.
+    duration_rel_precision_threshold = 0.1 ## +/- 10% (relative precision) allowed for now.
+    depth_rel_precision_threshold = 0.1 ## +/- 10% (relative precision) allowed for now.
 
     ## How long of a baseline do you want to use (in days)?
     baseline = 90.
@@ -101,16 +104,15 @@ def main():
         lc_string = "\t".join( ['TestStar_'+i, '0', base64.b64encode(compress(simplejson.dumps(this_lc_listoflists))) ] )
         lc_string = cStringIO.StringIO(lc_string)
 
-        ## Run the lightcurve through bls_pulse_vec.
-        these_srs = bls_pulse.main(segment_size, lc_string, min_duration, max_duration, n_bins_blspulse, -1, "none")
+        ## Run the lightcurve through bls_pulse.
+        these_srs = bls_pulse(segment_size, lc_string, min_duration, max_duration, n_bins_blspulse, -1, "none")
 
         ## Compare to see if each of the simulated transits is found by BLS_PULSE.
         for tnum,ttime,tdepth,tduration in zip(range(len(this_lc['transit_times'])), this_lc['transit_times'], this_lc['transit_depths'], this_lc['transit_durations']):
-            if numpy.nanmin(abs(ttime-these_srs["midtimes"].values)/ttime) <= precision_threshold and numpy.nanmin(abs(tdepth-these_srs["depths"].values)/tdepth) <= precision_threshold and numpy.nanmin(abs(tduration-these_srs["durations"].values)/tduration) <= precision_threshold:
+            if numpy.nanmin(abs(ttime-these_srs["midtimes"].values)) <= midtime_precision_threshold and numpy.nanmin(abs(tdepth-these_srs["depths"].values)/tdepth) <= depth_rel_precision_threshold and numpy.nanmin(abs(tduration-these_srs["durations"].values)/tduration) <= duration_rel_precision_threshold:
                 print "   Transit {0: <3d}.....PASS".format(tnum)
             else:
                 print "   Transit {0: <3d}...FAIL".format(tnum)
-
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logger.setLevel(logging.INFO)

@@ -15,6 +15,7 @@ import logging
 import sys
 import math
 import pandas as pd
+import ipdb
 
 import matplotlib.pyplot as matplot
 
@@ -104,27 +105,26 @@ def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_segment, binFl
     best_SR = numpy.nan
     
     for i1 in range(nbins):
-        s = 0
-        r = 0
+        s = 0; r = 0
         for i2 in range(i1, min(i1 + maxdur + 1,nbins)):
             s += binFlx[i2]
             r += ppb[i2]
-            if i2 - i1 > mindur and r >= r_min and direction*s >= 0:
-                sr = 1 * (s**2 / (r * (n - r)))
+            if i2 - i1 > mindur and r >= r_min and direction*s >= 0 and r < n:
+                sr = s**2 / (r * (n - r))
                 if sr > best_SR or numpy.isnan(best_SR):
+
                     ## Update the best SR values.
                     best_SR = sr
 
                     ## Report the duration in units of hours, not bins.
                     ## Old way, in units of bins.
                     ## thisDuration = i2 - i1 + 1
-                    thisDuration = sum(ppb[i1:i2]) * lc_samplerate * 24.                    
+                    thisDuration = sum(ppb[i1:i2+1]) * lc_samplerate * 24.                    
 
                     ## Old way of calculating the depth was some sort of "average" depth across the binned points, but I found that binned points that happen during ingress/egress would greatly affect this, instead just take the min. flux level during the event in question.
                     ## thisDepth = -s*n/(r*(n-r))
-                    curDepth = binFlx[i2]
-                    if curDepth < thisDepth or not numpy.isfinite(thisDepth):
-                        thisDepth = binFlx[i2]
+                    curDepth = numpy.nanmin(binFlx[i1:i2+1])
+                    if curDepth < thisDepth or not numpy.isfinite(thisDepth): thisDepth = curDepth
 
                     ## Report the transit midtime in units of days.
                     thisMidTime = this_seg[0] + 0.5*(i1+i2)*trial_segment/nbins
@@ -242,6 +242,7 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
             ## Determine SR_Max.  The return tuple consists of:
             ##      (Signal Residue, Signal Duration, Signal Depth, Signal MidTime)
             sr_tuple = calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, segment_size, binned_fluxes, ppb, this_seg, lc_samplerate)
+
             ## If the Signal Residue is finite, then we need to add these parameters to our output storage array.
             if numpy.isfinite(sr_tuple[0]):
                 srMax[-1] = sr_tuple[0]

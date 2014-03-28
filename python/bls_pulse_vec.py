@@ -56,8 +56,6 @@ def compute_signal_residual(binned_segment, matrix, duration, n_bins_min_duratio
     ## This is the product of the direction times the "s" value, used later to compare that the best SR matches the desired direction.
     ds = direction * s
 
-#    import ipdb; ipdb.set_trace()
-
     sr[:,duration <= n_bins_min_duration] = np.nan
     SR_index = np.unravel_index(np.ma.masked_invalid(sr).argmax(), sr.shape)
     i1 = int(SR_index[0])
