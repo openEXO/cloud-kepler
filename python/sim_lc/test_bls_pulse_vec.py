@@ -10,6 +10,7 @@ from zlib import compress
 import cStringIO
 import bls_vec_simulator
 from bls_pulse_vec import bls_pulse_vec
+import sys
 
 import numpy
 import matplotlib.pyplot as matplot
@@ -106,6 +107,8 @@ def main():
                 print "   Transit {0: <3d}.....PASS".format(tnum)
             else:
                 print "   Transit {0: <3d}...FAIL".format(tnum)
+                sys.exit(1)
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
