@@ -48,3 +48,14 @@ def main():
     for kic_id, quarters, light_curve in input_data:
         id_string = kic_id + quarters.replace(",","_").translate(None, "[]' ")
         output[id_string] = bls_pulse_vec(light_curve, opts.segment, opts.min_duration, opts.max_duration, n_bins)
+
+        elif opts.print_format == 'normal':
+            print "-" * 80
+            print "Kepler " + kic_id
+            print "Quarters: " + quarters
+            print "-" * 80
+            print "\t".join(map(str,['Segment','srMax', 'transitPhase', 'transitDuration', 'transitDepth', 'transitMidTime']))
+            for ii,seq in enumerate(segments):
+                print "\t".join(map(str,[ii, srMax[ii], transitPhase[ii], transitDuration[ii], transitDepth[ii], transitMidTime[ii]]))
+            print "-" * 80
+            print "\n"
