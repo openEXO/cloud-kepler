@@ -11,6 +11,7 @@ import cStringIO
 import bls_vec_simulator
 from bls_pulse_vec import bls_pulse_vec
 import sys
+print sys.path
 
 import numpy
 import matplotlib.pyplot as matplot

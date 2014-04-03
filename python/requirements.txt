@@ -1,0 +1,6 @@
+numpy
+ipdb
+simplejson
+scipy
+matplotlib
+pandas

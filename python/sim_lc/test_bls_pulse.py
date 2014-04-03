@@ -9,7 +9,7 @@ import simplejson
 from zlib import compress
 import cStringIO
 import bls_vec_simulator
-from bls_pulse import bls_pulse
+from bls_pulse import main as bls_pulse
 
 import numpy
 import matplotlib.pyplot as matplot
