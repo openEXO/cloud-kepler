@@ -10,6 +10,7 @@ from zlib import compress
 import cStringIO
 import bls_vec_simulator
 from bls_pulse import main as bls_pulse
+import sys
 
 import numpy
 import matplotlib.pyplot as matplot
@@ -115,6 +116,7 @@ def main():
             except ValueError:
                 print "*** Warning in TEST_BLS_PULSE: All segments had no events.  Unable to run pass/fail test, defaulting to FAIL.."
                 print "   Transit {0: <3d}...FAIL".format(tnum)
+                sys.exit(1)
             else:
                 ## Test pass/fail criteria using the closest segment event.
                 if abs(ttime-these_srs["midtimes"].values[closest_index]) <= midtime_precision_threshold and abs(tdepth-these_srs["depths"].values[closest_index])/tdepth <= depth_rel_precision_threshold and abs(tduration-these_srs["durations"].values[closest_index])/tduration <= duration_rel_precision_threshold:
@@ -125,6 +127,7 @@ def main():
                     if abs(tdepth-these_srs["depths"].values[closest_index])/tdepth <= depth_rel_precision_threshold: err_string_to_add += " (depth)"
                     if abs(tduration-these_srs["durations"].values[closest_index])/tduration <= duration_rel_precision_threshold: err_string_to_add += " (duration)"
                     print "   Transit {0: <3d}...FAIL".format(tnum) + err_string_to_add
+                    sys.exit(1)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
