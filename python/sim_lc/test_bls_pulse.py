@@ -109,10 +109,23 @@ def main():
 
         ## Compare to see if each of the simulated transits is found by BLS_PULSE.
         for tnum,ttime,tdepth,tduration in zip(range(len(this_lc['transit_times'])), this_lc['transit_times'], this_lc['transit_depths'], this_lc['transit_durations']):
-            if numpy.nanmin(abs(ttime-these_srs["midtimes"].values)) <= midtime_precision_threshold and numpy.nanmin(abs(tdepth-these_srs["depths"].values)/tdepth) <= depth_rel_precision_threshold and numpy.nanmin(abs(tduration-these_srs["durations"].values)/tduration) <= duration_rel_precision_threshold:
-                print "   Transit {0: <3d}.....PASS".format(tnum)
-            else:
+            ## Find the index of the closest segment by comparing the times.
+            try:
+                closest_index = numpy.nanargmin(abs(ttime-these_srs["midtimes"].values))
+            except ValueError:
+                print "*** Warning in TEST_BLS_PULSE: All segments had no events.  Unable to run pass/fail test, defaulting to FAIL.."
                 print "   Transit {0: <3d}...FAIL".format(tnum)
+            else:
+                ## Test pass/fail criteria using the closest segment event.
+                if abs(ttime-these_srs["midtimes"].values[closest_index]) <= midtime_precision_threshold and abs(tdepth-these_srs["depths"].values[closest_index])/tdepth <= depth_rel_precision_threshold and abs(tduration-these_srs["durations"].values[closest_index])/tduration <= duration_rel_precision_threshold:
+                    print "   Transit {0: <3d}.....PASS".format(tnum)
+                else:
+                    err_string_to_add = ""
+                    if abs(ttime-these_srs["midtimes"].values[closest_index]) <= midtime_precision_threshold: err_string_to_add += " (timestamp)"
+                    if abs(tdepth-these_srs["depths"].values[closest_index])/tdepth <= depth_rel_precision_threshold: err_string_to_add += " (depth)"
+                    if abs(tduration-these_srs["durations"].values[closest_index])/tduration <= duration_rel_precision_threshold: err_string_to_add += " (duration)"
+                    print "   Transit {0: <3d}...FAIL".format(tnum) + err_string_to_add
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logger.setLevel(logging.INFO)
