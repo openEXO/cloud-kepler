@@ -116,10 +116,18 @@ def main():
                     print "   Transit {0: <3d}.....PASS".format(tnum)
                 else:
                     err_string_to_add = ""
-                    if abs(ttime-these_srs["midtimes"].values[closest_index]) <= midtime_precision_threshold: err_string_to_add += " (timestamp)"
-                    if abs(tdepth-these_srs["depths"].values[closest_index])/tdepth <= depth_rel_precision_threshold: err_string_to_add += " (depth)"
-                    if abs(tduration-these_srs["durations"].values[closest_index])/tduration <= duration_rel_precision_threshold: err_string_to_add += " (duration)"
+                    err_string_line2 = ""
+                    if abs(ttime-these_srs["midtimes"].values[closest_index]) >= midtime_precision_threshold:
+                        err_string_to_add += " (timestamp)"
+                        err_string_line2 += "\n\tTIMESTAMP: Expected: " + str(ttime) + " Measured: " + str(these_srs["midtimes"].values[closest_index]) + " Diff: " + str(abs(ttime-these_srs["midtimes"].values[closest_index])) + " Allowed Diff: " + str(midtime_precision_threshold)
+                    if abs(tdepth-these_srs["depths"].values[closest_index])/tdepth >= depth_rel_precision_threshold:
+                        err_string_to_add += " (depth)"
+                        err_string_line2 += "\n\tDEPTH: Expected: " + str(tdepth) + " Measured: " + str(these_srs["depths"].values[closest_index]) + " Rel. Diff: " + str(abs(tdepth-these_srs["depths"].values[closest_index])/tdepth*100.) + "% Allowed Rel. Diff: " + str(depth_rel_precision_threshold*100.)+"%"
+                    if abs(tduration-these_srs["durations"].values[closest_index])/tduration >= duration_rel_precision_threshold:
+                        err_string_to_add += " (duration)"
+                        err_string_line2 += "\n\tDURATION: Expected: " + str(tduration) + " Measured: " + str(these_srs["durations"].values[closest_index]) + " Rel. Diff: " + str(abs(tduration-these_srs["durations"].values[closest_index])/tduration*100.) + "% Allowed Rel. Diff: " + str(duration_rel_precision_threshold*100.)+"%"
                     print "   Transit {0: <3d}...FAIL".format(tnum) + err_string_to_add
+                    print err_string_line2
                     sys.exit(1)
 
 if __name__ == "__main__":
