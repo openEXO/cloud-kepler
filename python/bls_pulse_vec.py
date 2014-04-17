@@ -53,15 +53,13 @@ def compute_signal_residual(binned_segment, matrix, duration, n_bins_min_duratio
     s = reindex_to_matrix(binned_segment_indexed.flux, matrix).cumsum(axis=1)
     n = binned_segment_indexed.samples.sum()
     sr = s**2 / (r * (n - r))
-    ## This is the product of the direction times the "s" value, used later to compare that the best SR matches the desired direction.
-    ds = direction * s
 
     sr[:,duration <= n_bins_min_duration] = np.nan
     SR_index = np.unravel_index(np.ma.masked_invalid(sr).argmax(), sr.shape)
     i1 = int(SR_index[0])
     i2 = int(matrix[SR_index])
     ## Make sure the best SR matches the desired direction.
-    if ds[SR_index] >= 0:
+    if s[SR_index]*direction >= 0:
         return pd.Series(dict(
                 phases=i1,
                 durations=binned_segment_indexed.samples[i1:i2].sum(),
