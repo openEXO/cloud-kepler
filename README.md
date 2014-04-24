@@ -1,4 +1,4 @@
-Prototype of Cloud Kepler
+Prototype of Cloud Kepler *https://travis-ci.org/openEXO/cloud-kepler.svg?branch=master
 =========================
 Pipeline for processing Kepler Space Telescope time series and search
 for planets.
