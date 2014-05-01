@@ -117,6 +117,10 @@ def main(separator="\t"):
             if quarter == '4':
                 quarter_key = '4a'
             
+            # Fix kepler_id missing zero-padding
+            if len(kepler_id) < 9:
+                kepler_id = str("%09d" % int(kepler_id))
+
             # Now create the URL regardless of Quarter.
             path = prepare_path(kepler_id, quarter_key)
 
