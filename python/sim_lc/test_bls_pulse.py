@@ -5,7 +5,7 @@ import logging
 import random
 import math
 import base64
-import simplejson
+import json
 from zlib import compress
 import cStringIO
 import bls_vec_simulator
@@ -102,7 +102,7 @@ def main():
         this_lc_listoflists = [[x,y,z] for x,y,z in zip(this_lc['lc'].index,this_lc['lc'].flux,this_lc['lc'].flux_error)]
 
         ## Create a lightcurve string object as expected by bls_pulse.
-        lc_string = "\t".join( ['TestStar_'+i, '0', base64.b64encode(compress(simplejson.dumps(this_lc_listoflists))) ] )
+        lc_string = "\t".join( ['TestStar_'+i, '0', base64.b64encode(compress(json.dumps(this_lc_listoflists))) ] )
         lc_string = cStringIO.StringIO(lc_string)
 
         ## Run the lightcurve through bls_pulse.

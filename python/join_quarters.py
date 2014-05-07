@@ -10,17 +10,17 @@ import sys
 import base64
 import numpy as np
 from zlib import decompress, compress
-import simplejson
+import json
 
 def read_mapper_output(file, separator='\t'):
     for line in file:
         kic, quarter, uri, fits_string = line.rstrip().split(separator)
-        fits_array = simplejson.loads((decompress(base64.b64decode(fits_string))))
+        fits_array = json.loads((decompress(base64.b64decode(fits_string))))
         yield kic, quarter, uri, fits_array
 
 
 def encode_list(flux_list):
-    return base64.b64encode(compress(simplejson.dumps(flux_list)))
+    return base64.b64encode(compress(json.dumps(flux_list)))
 
 def main(separator='\t'):
     # input comes from STDIN (standard input)
