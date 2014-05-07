@@ -7,6 +7,7 @@ import sys
 import math
 from optparse import OptionParser
 from collections import OrderedDict
+from bls_pulse_vec import bls_pulse_vec
 
 def read_mapper_output(file, separator='\t'):
     """Read stdin input"""
@@ -14,6 +15,18 @@ def read_mapper_output(file, separator='\t'):
         kic, quarters, flux_string = line.rstrip().split(separator)
         light_curve = pd.DataFrame(simplejson.loads((decompress(base64.b64decode(flux_string)))), columns=["time", "flux", "flux_error"]).set_index("time")
         yield kic, quarters, light_curve
+
+def check_input_options(parser,opts):
+    if opts.segment <= 0.0:
+        parser.error("Segment size must be > 0.")
+    if opts.min_duration <= 0.0:
+        parser.error("Min. duration must be > 0.")
+    if opts.max_duration <= 0.0:
+        parser.error("Max. duration must be > 0.")
+    if opts.max_duration <= opts.min_duration:
+        parser.error("Max. duration must be > min. duration.")
+    if opts.n_bins <= 0:
+        parser.error("Number of bins must be > 0.")
 
 def setup_input_options(parser):
     parser.add_option("-p", "--segment", action="store", type="float", dest="segment", help="[Required] Trial segment (days).  There is no default value.")
@@ -49,13 +62,15 @@ def main():
         id_string = kic_id + quarters.replace(",","_").translate(None, "[]' ")
         output[id_string] = bls_pulse_vec(light_curve, opts.segment, opts.min_duration, opts.max_duration, n_bins)
 
-        elif opts.print_format == 'normal':
-            print "-" * 80
-            print "Kepler " + kic_id
-            print "Quarters: " + quarters
-            print "-" * 80
-            print "\t".join(map(str,['Segment','srMax', 'transitPhase', 'transitDuration', 'transitDepth', 'transitMidTime']))
-            for ii,seq in enumerate(segments):
-                print "\t".join(map(str,[ii, srMax[ii], transitPhase[ii], transitDuration[ii], transitDepth[ii], transitMidTime[ii]]))
-            print "-" * 80
-            print "\n"
+        print "-" * 80
+        print "Kepler " + kic_id
+        print "Quarters: " + quarters
+        print "-" * 80
+        print "\t".join(map(str,['Segment','srMax', 'transitPhase', 'transitDuration', 'transitDepth', 'transitMidTime']))
+        for ii,seq in enumerate(segments):
+            print "\t".join(map(str,[ii, srMax[ii], transitPhase[ii], transitDuration[ii], transitDepth[ii], transitMidTime[ii]]))
+        print "-" * 80
+        print "\n"
+
+if __name__ == "__main__":
+    main()
