@@ -4,9 +4,9 @@ bls_pulse = The bls_pulse main program that runs the algorithm on an input light
 
 bls_pulse_vec = A vectorized version of bls_pulse being developed in parallel to bls_pulse.py.
 
-download = Retrieves FITS files from MAST, downloads them into memory, and extracts lightcurve information.
-
 drive_bls_pulse = Driver program for bls_pulse.py for handling command-line options, etc.
+
+get_data = Retrieves FITS files from MAST over the web, or from a local disk, and extracts lightcurve information.
 
 join_quarters = Given a set of Kepler IDs and data from various Quarters, combines each Kepler ID's data into a continuous lightcurves.  Does not attempt any sophisticated Quarter stitching (no offsets applied, just does a grouping)
 

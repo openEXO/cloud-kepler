@@ -5,7 +5,6 @@ import logging
 import random
 import math
 import base64
-import simplejson
 from zlib import compress
 import cStringIO
 import bls_vec_simulator
@@ -15,7 +14,6 @@ import sys
 import numpy
 import matplotlib.pyplot as matplot
 import matplotlib.transforms
-import ipdb
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
