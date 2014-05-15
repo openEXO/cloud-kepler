@@ -11,7 +11,7 @@ import pyfits
 import base64
 import numpy as np
 from zlib import compress
-import simplejson
+import json
 
 # NOTE:  There are two possible quarter prefixes for Quarter 4 data files.  The more common one is put first so that it is checked before the rarer one.
 # NOTE:  This list assumes long-cadence data ONLY.
@@ -66,7 +66,7 @@ def process_fits_object(fits_string):
         time_pdcflux_pdcerror = np.asarray(
             [[c[0]+bjd_trunci+bjd_truncf-2400000.0,c[7],c[8]] for i,c in
              enumerate(fits_list) if error_status[i] == 0])
-        retval = base64.b64encode(compress(simplejson.dumps(time_pdcflux_pdcerror.tolist())))
+        retval = base64.b64encode(compress(json.dumps(time_pdcflux_pdcerror.tolist())))
         #fix for windows, returns the filename into main so that os.unlink can be called there
         #props go to the swag STScI IT guy for figuring this out.
         #I'll add his name here once I work up the courage to ask him.
