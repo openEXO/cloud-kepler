@@ -1,16 +1,17 @@
 echo "Load the Hadoop environment"
 source setenv.sourceme
+input_filename=kep_4_13_14_15.txt
 
 echo "Making a directory for our input data"
 hadoop dfs -mkdir mrjob-input
 
 echo "Copying input text to HDFS"
-hadoop dfs -put ../test/test_011446443.txt mrjob-input/test_011446443.txt
+hadoop dfs -put ../python/$input_filename mrjob-input/$input_filename
 
 echo "Running our mrjob Python script"
 ./bls_pulse_mrjob.py \
     -r hadoop \
-    hdfs:///user/$USER/mrjob-input/test_011446443.txt \
+    hdfs:///user/$USER/mrjob-input/$input_filename \
     --jobconf mapred.reduce.tasks=2 \
     --output-dir hdfs:///user/$USER/mrjob-output
 

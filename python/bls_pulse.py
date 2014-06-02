@@ -8,7 +8,7 @@
 ## Place import commands and logging options.
 ############################################################################################
 import numpy
-import simplejson
+import json
 from zlib import decompress, compress
 import base64
 import logging
@@ -41,7 +41,7 @@ class BLSPulseError(Exception):
 def read_mapper_output(file, separator='\t'):
     for line in file:
         kic, quarters, flux_string = line.rstrip().split(separator)
-        flux_array = simplejson.loads((decompress(base64.b64decode(flux_string))))
+        flux_array = json.loads((decompress(base64.b64decode(flux_string))))
         yield kic, quarters, flux_array
 ############################################################################################
 
@@ -51,7 +51,7 @@ def read_mapper_output(file, separator='\t'):
 ############################################################################################
 def encode_arr(arr):
     #64bit encodes numpy arrays
-    return base64.b64encode(compress(simplejson.dumps(arr.tolist())))
+    return base64.b64encode(compress(json.dumps(arr.tolist())))
 ############################################################################################
 
 
