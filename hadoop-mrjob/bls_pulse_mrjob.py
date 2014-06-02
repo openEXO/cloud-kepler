@@ -17,7 +17,7 @@ using mrjob only for setting up Hadoop"""
         return [
             self.mr(mapper_cmd=FOLDER + "download.py",
                     reducer_cmd=FOLDER + "join_quarters.py"),
-            self.mr(reducer_cmd=FOLDER + "bls_pulse.py -m 0.01 -d 2.0 -b 100 -p 2.47063 --direction -1 --printformat 'normal'")
+            self.mr(reducer_cmd=FOLDER + "bls_pulse_vec_interface.py --mindur .01 --maxdur 2.0 --nbins 100 --segment 2.5 --direction -1 --printformat 'normal'")
         ]
 
 if __name__ == '__main__':
