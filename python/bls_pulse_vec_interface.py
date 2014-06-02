@@ -62,11 +62,14 @@ def main():
     input_data = read_mapper_output(sys.stdin)
 
     output = OrderedDict()
+    pd.set_option('display.max_rows', None) # print all rows of dataframe
     for kic_id, quarters, light_curve in input_data:
         id_string = kic_id + quarters.replace(",","_").translate(None, "[]' ")
         output[id_string] = bls_pulse_vec(light_curve, opts.segment, opts.min_duration, opts.max_duration, opts.n_bins, detrend_order=opts.detrend_order)
 
+        print "*"*20 + "   " + id_string
         print output[id_string]
 
 if __name__ == "__main__":
     main()
+    sys.exit(0)
