@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+#import matplotlib
+#matplotlib.use("agg")
 import pandas as pd
 import json
 from zlib import decompress, compress
