@@ -147,6 +147,10 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
     ## The number of bins can sometimes change, so make a working copy so that the original value is still available.
     nbins = n_bins
 
+    # The return data should be a list (or some other structure) so that we don't stop after
+    # the first KIC number.
+    return_data = []
+
     ## Peel out the Kepler ID, Quarters, and lightcurve from the input_data for use.
     ## Note:  The lightcurve is stored as a List of Lists comprised of [time, flux, flux_error].
     for k, q, f in input_data:
@@ -271,12 +275,16 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
             print "\n"
 
         ## Return each segments' best transit event.  Create a pandas data frame based on the array of srMax and transit parameters.  The index of the pandas array will be the segment number.
-        return_data = pd.DataFrame({
+        return_data.append(pd.DataFrame({
                 "srMaxVals": srMax,
                 "durations": transitDuration,
                 "depths":transitDepth,
                 "midtimes":transitMidTime
-                },index=pd.Index(range(len(segments))))
+                },index=pd.Index(range(len(segments)))))
+    
+    if len(return_data) == 1:
+        return return_data[0]
+    else:
         return return_data
 
 if __name__ == "__main__":

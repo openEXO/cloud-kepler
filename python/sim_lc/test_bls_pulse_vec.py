@@ -11,13 +11,39 @@ import bls_vec_simulator
 from bls_pulse_vec import bls_pulse_vec
 import sys
 
-import numpy
+import numpy as np
 import matplotlib.pyplot as matplot
 import matplotlib.transforms
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 ############################################################################################
+
+
+def is_straddling(tmid, tdur, segsize, lc):
+    '''
+    Returns true if, given a time baseline, a segment break occurs inside a transit.
+
+    Inputs:
+      tmid -- the midtransit time
+      tdur -- the duration of the transit
+      segsize -- the length of a segment
+      lc -- the lightcurve data (for extracting the time); this function assumes that the
+        first segment occurs at the minimum time
+    '''
+    # Extract the time from the DataFrame.
+    time = np.array(lc.index.values, dtype='float64')
+    
+    # The segment break may fall before or after midtransit; calculate those times.
+    n = np.floor((tmid - np.amin(time)) / segsize)
+    before = segsize * float(n)
+    after = segsize * float(n + 1)
+    
+    # Is the segment break within half a duration of midtransit?
+    if before > tmid - segsize / 2. or after < tmid + segsize / 2.:
+        return True
+    else:
+        return False
 
 
 ############################################################################################
@@ -103,7 +129,7 @@ def main():
         for tnum,ttime,tdepth,tduration in zip(range(len(this_lc['transit_times'])), this_lc['transit_times'], this_lc['transit_depths'], this_lc['transit_durations']):
             ## Find the index of the closest segment by comparing the times.
             try:
-                closest_index = numpy.nanargmin(abs(ttime-these_srs["midtimes"].values))
+                closest_index = np.nanargmin(abs(ttime-these_srs["midtimes"].values))
             except ValueError:
                 print "*** Warning in TEST_BLS_PULSE: All segments had no events.  Unable to run pass/fail test, defaulting to FAIL.."
                 print "   Transit {0: <3d}...FAIL".format(tnum)
@@ -112,6 +138,8 @@ def main():
                 ## Test pass/fail criteria using the closest segment event.
                 if abs(ttime-these_srs["midtimes"].values[closest_index]) <= midtime_precision_threshold and abs(tdepth-these_srs["depths"].values[closest_index])/tdepth <= depth_rel_precision_threshold and abs(tduration-these_srs["durations"].values[closest_index])/tduration <= duration_rel_precision_threshold:
                     print "   Transit {0: <3d}.....PASS".format(tnum)
+                elif is_straddling(ttime, tduration, segment_size, this_lc['lc']):
+                    print "   Transit {0: <3d}.....PASS (straddling)".format(tnum)
                 else:
                     err_string_to_add = ""
                     err_string_line2 = ""
