@@ -93,7 +93,11 @@ def get_data_from_mast(data):
             # Special handling required since there are two Quarter 4 timestamps possible.  First start off with Quarter 4a.
             if quarter == '4':
                 quarter_key = '4a'
-            
+
+            # Fix kepler_id missing zero-padding
+            if len(kepler_id) < 9:
+                kepler_id = str("%09d" % int(kepler_id))            
+
             # Now create the URL regardless of Quarter.
             path = prepare_path(kepler_id, quarter_key)
 
@@ -188,6 +192,10 @@ def get_data_from_disk(data, datapath):
             # Special handling required since there are two Quarter 4 timestamps possible.  First start off with Quarter 4a.
             if quarter == '4':
                 quarter_key = '4a'
+
+            # Fix kepler_id missing zero-padding
+            if len(kepler_id) < 9:
+                kepler_id = str("%09d" % int(kepler_id))            
 
             # Now create the URL regardless of Quarter.
             path = get_fits_path(datapath, kepler_id, quarter_key)
