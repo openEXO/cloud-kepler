@@ -173,8 +173,16 @@ def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0
         time = lc_nparray[:,0]
         flux = lc_nparray[:,1]
         
-        ## Define the minimum "r" value.  Note that "r" is the sum of the weights on flux at full depth.
-        ## Note:  The sample rate of Kepler long-cadence data is (within a second) 0.02044 days.  Rather than hard-code this, we determine the sample rate from the input lightcurve as just the median value of the difference between adjacent observations.  Assuming the input lightcurve has enough points, then this will effectively avoid issues caused by gaps in the lightcurve, since we assume that *most* of the data points in the lightcurve array will be taken at the nominal sampling.  We also do this so that, if we are sending simulated data at a different cadence than the Kepler long-cadence, then we don't have to add conditionals to the code.
+        # Define the minimum "r" value.  Note that "r" is the sum of the weights on flux at 
+        # full depth.
+        # NOTE:  The sample rate of Kepler long-cadence data is (within a second) 0.02044 days. 
+        # Rather than hard-code this, we determine the sample rate from the input lightcurve as 
+        # just the median value of the difference between adjacent observations.  Assuming the 
+        # input lightcurve has enough points, then this will effectively avoid issues caused by 
+        # gaps in the lightcurve, since we assume that *most* of the data points in the lightcurve 
+        # array will be taken at the nominal sampling.  We also do this so that, if we are sending 
+        # simulated data at a different cadence than the Kepler long-cadence, then we don't have 
+        # to add conditionals to the code.
         lc_samplerate = numpy.median(numpy.diff(time))
 
         ## The min. r value to consider is either the typical number of Kepler data points expected in a signal that is min_duration long, or a single data point, whichever is larger.

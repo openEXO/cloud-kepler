@@ -1,9 +1,17 @@
+#!/usr/bin/env python
+
 from __future__ import division
+import sys
 import numpy as np
 import pandas as pd
 from collections import OrderedDict
 from PyKE.kepfit import lsqclip
-import exceptions
+import logging
+from common import read_mapper_output, encode_arr
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 
 def detrend_mean_remove(flux, period):
     """Detrend removing the mean of each period
@@ -113,13 +121,13 @@ def bls_pulse_vec(light_curve, segment_size, min_duration, max_duration, n_bins,
 
     # check inputs
     if segment_size <= 0.0:
-        raise exceptions.ValueError("Segment size must be > 0.")
+        raise ValueError("Segment size must be > 0.")
     if min_duration <= 0.0:
-        raise exceptions.ValueError("Min. duration must be > 0.")
+        raise ValueError("Min. duration must be > 0.")
     if max_duration <= min_duration:
-        raise exceptions.ValueError("Max. duration must be > min. duration.")
+        raise ValueError("Max. duration must be > min. duration.")
     if n_bins <= 1:
-        raise exceptions.ValueError("Number of bins must be > 1.")
+        raise ValueError("Number of bins must be > 1.")
 
     n_bins_min_duration = max(np.floor(min_duration/segment_size*n_bins), 1)
     n_bins_max_duration = np.ceil(max_duration/segment_size*n_bins)
@@ -158,3 +166,83 @@ def bls_pulse_vec(light_curve, segment_size, min_duration, max_duration, n_bins,
         return results, detrend_coefficients
     else:
         return results
+
+
+def main(segment_size, input_string=None, min_duration=0.0416667, max_duration=0.5, n_bins=100,
+direction=0, print_format='encoded', verbose=False, detrend_order=None):
+    '''
+    This is the main routine that allows the vectorized bls_pulse to be called from the
+    command line. It takes the same arguments as the corresponding function in bls_pulse.py.
+    '''
+    # Read in the KIC ID, quarter, and lightcurve data from standard input if it is not
+    # supplied through the input options.
+    if not input_string:
+        input_data = read_mapper_output(sys.stdin)
+    else:
+        input_data = read_mapper_output(input_string)
+
+    # The return data should be a list (or some other structure) so that we don't stop after
+    # the first KIC number.
+    return_data = []
+
+    # Peel out the Kepler ID, quarters, and lightcurve form the input data for use.
+    # NOTE: The lightcurve is stored as a list of lists comprised of [time, flux, flux_error].
+    for k, q, f in input_data:
+        kic_id = k
+        quarters = q
+        lightcurve = f
+
+        # Coerce the lightcurve data into a numpy array, then extract the columns and
+        # make a pd.DataFrame for input to vectorized BLS algorithm.
+        lc_nparray = np.array(lightcurve)
+        time = lc_nparray[:,0]
+        flux = lc_nparray[:,1]
+        flux_error = lc_nparray[:,2]
+        lc = pd.DataFrame(dict(flux=flux, flux_error=flux_error), index=time)
+        lc.index.name = 'time'
+
+        temp = bls_pulse_vec(lc, segment_size, min_duration, max_duration, n_bins, 
+            detrend_order=detrend_order, direction=direction, remove_nan_segs=False)
+        return_data.append(temp)
+
+        if type(temp) is tuple:
+            # Depending on the detrending used, `temp` may be a tuple or a DataFrame;
+            # take only the first element if there is more than one.
+            temp = temp[0]
+
+        # Return format is DataFrame; NumPy arrays are easier to work with here.
+        srMax = temp['signal_residuals'].as_matrix()
+        transitDuration = temp['durations'].as_matrix()
+        transitDepth = temp['depths'].as_matrix()
+        transitMidTime = temp['midtimes'].as_matrix()
+        segments = temp.index
+
+        if print_format == 'encoded':
+            print "\t".join(map(str, [kic_id, encode_arr(srMax), encode_arr(transitDuration),
+                encode_arr(transitDepth), encode_arr(transitMidTime)]))
+        elif print_format == 'normal':
+            print '-' * 80
+            print 'Kepler ' + kic_id
+            print 'Quarters: ' + quarters
+            print '-' * 80
+            print '{0: <7s} {1: <13s} {2: <10s} {3: <9s} {4: <13s}'.format('Segment',
+                'srMax', 'Duration', 'Depth', 'MidTime')
+            
+            for ii, seq in enumerate(segments):
+                print '{0: <7d} {1: <13.6f} {2: <10.6f} {3: <9.6f} {4: <13.6f}'.format(ii, 
+                    srMax[ii], transitDuration[ii], transitDepth[ii], transitMidTime[ii])
+            
+            print '-' * 80
+            print
+
+    if len(return_data) == 1:
+        return return_data[0]
+    else:
+        return return_data
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+    logger.setLevel(logging.INFO)
+    main()
+
