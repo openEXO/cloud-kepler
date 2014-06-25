@@ -15,6 +15,8 @@ before_install:
 install:
   - conda install --yes python=$TRAVIS_PYTHON_VERSION atlas numpy scipy matplotlib dateutil pandas pip
   - pip install -r python/requirements.txt 
+  - pip uninstall openpyxl
+  - pip install openpyxl==1.8.6
  
 # Run test
 script:
