@@ -1,6 +1,5 @@
 numpy
 ipdb
-json
 scipy
 matplotlib
 pandas
