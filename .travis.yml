@@ -13,9 +13,8 @@ before_install:
   - sudo ln -s /run/shm /dev/shm
 # Install packages
 install:
-  - conda install --yes python=$TRAVIS_PYTHON_VERSION atlas numpy scipy matplotlib dateutil pip
-  - pip install -r python/requirements.txt 
-  - pip install pandas==0.13.0
+  - conda install --yes python=$TRAVIS_PYTHON_VERSION atlas numpy scipy matplotlib dateutil pandas=0.13.0 pip
+  - pip install -r python/requirements.txt
   - pip install openpyxl==1.8.6
  
 # Run test
