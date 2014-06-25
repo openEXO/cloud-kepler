@@ -2,4 +2,3 @@ numpy
 ipdb
 scipy
 matplotlib
-pandas
