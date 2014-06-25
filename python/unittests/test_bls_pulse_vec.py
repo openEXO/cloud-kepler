@@ -4,8 +4,6 @@
 ## Place import commands and logging options.
 ############################################################################################
 import sys
-sys.path.append('.')
-
 import logging
 import random
 import math
