@@ -60,7 +60,10 @@ def encode_arr(arr):
     return base64.b64encode(compress(json.dumps(arr.tolist())))
 
 def main():
-    parser = ArgumentParser(usage="%prog -p [-m] [-d] [-b] [--direction]", version="%prog 1.0")
+    # NOTE: Adding a version number to ArgumentParser conflicts with -v flag that we have
+    # defined to be a verbosity option. If the version number is important, change the "-v"
+    # flag to be something else.
+    parser = ArgumentParser(usage="%prog -p [-m] [-d] [-b] [--direction]")
     setup_input_options(parser)
     
     ## Parse input options from the command line.

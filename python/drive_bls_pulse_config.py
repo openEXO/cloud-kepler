@@ -2,8 +2,7 @@ import sys
 import logging
 import bls_pulse
 import bls_pulse_vec
-import get_data
-import join_quarters
+import cProfile
 from configparser import SafeConfigParser, NoOptionError
 
 logger = logging.getLogger(__name__)
@@ -37,7 +36,8 @@ def main():
 
     # Load the configuration file.
     defaults = {'min_duration':'0.0416667', 'max_duration':'0.5', 'n_bins':'100',
-        'direction':'0', 'print_format':'encoded', 'verbose':'no', 'vectorized':'no'}
+        'direction':'0', 'print_format':'encoded', 'verbose':'no', 'vectorized':'no',
+        'profiling':'off'}
     cp = SafeConfigParser(defaults)
     cp.read(sys.argv[1])
 
@@ -51,6 +51,7 @@ def main():
         print_format = cp.get('DEFAULT', 'print_format')
         verbose = cp.getboolean('DEFAULT', 'verbose')
         vectorized = cp.getboolean('DEFAULT', 'vectorized')
+        profiling = cp.getboolean('DEFAULT', 'profiling')
     except (NoOptionError, ValueError):
         raise ValueError('Invalid input configuration file')
 
@@ -61,8 +62,16 @@ def main():
         bls_pulse_vec.main(segment, None, min_duration, max_duration, n_bins, direction, 
             print_format, verbose)
     else:
-        bls_pulse.main(segment, None, min_duration, max_duration, n_bins, direction, 
-            print_format, verbose)
+        cmd = 'bls_pulse.main(segment, None, min_duration, max_duration, n_bins, ' \
+            'direction, print_format, verbose)'
+        globs = dict(bls_pulse=bls_pulse)
+        locs = dict(segment=segment, min_duration=min_duration, max_duration=max_duration, 
+            n_bins=n_bins, direction=direction, print_format=print_format, verbose=verbose)
+        
+        if profiling:
+            cProfile.runctx(cmd, globs, locs)
+        else:
+            exec(cmd, globs, locs)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
