@@ -59,8 +59,16 @@ def main():
     check_input_options(segment, min_duration, max_duration, n_bins)
     
     if vectorized:
-        bls_pulse_vec.main(segment, None, min_duration, max_duration, n_bins, direction, 
-            print_format, verbose)
+        cmd = 'bls_pulse_vec.main(segment, None, min_duration, max_duration, n_bins, ' \
+            'direction, print_format, verbose)'
+        globs = dict(bls_pulse_vec=bls_pulse_vec)
+        locs = dict(segment=segment, min_duration=min_duration, max_duration=max_duration, 
+            n_bins=n_bins, direction=direction, print_format=print_format, verbose=verbose)
+        
+        if profiling:
+            cProfile.runctx(cmd, globs, locs)
+        else:
+            exec(cmd, globs, locs)
     else:
         cmd = 'bls_pulse.main(segment, None, min_duration, max_duration, n_bins, ' \
             'direction, print_format, verbose)'
