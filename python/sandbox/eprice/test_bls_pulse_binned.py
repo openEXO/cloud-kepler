@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-The simplest possible unittest for bls_pulse_binned. Take a single segment with a single 
+The simplest possible unittest for bls_pulse_binned. Take a single segment with a single
 event and no noise and attempt to recover its parameters.
 '''
 
@@ -28,15 +28,21 @@ print 'depth =', r
 print 'midtime =', m
 print
 
-time = np.array([time])
-flux = np.array([flux])
-fluxerr = np.array([fluxerr])
+time = np.array(time)
+flux = np.array(flux)
+fluxerr = np.array(fluxerr)
 samples = np.ones_like(time)
 
-srsq, duration, depth, midtime = bp.bls_pulse_binned(time, flux, fluxerr, samples, 2., 0.05, 1.5)
+srsq = np.empty((1000,), dtype='float64')
+duration = np.empty_like(srsq)
+depth = np.empty_like(srsq)
+midtime = np.empty_like(srsq)
 
-ndx = np.argmax(srsq[0,:])
-print 'best duration:', duration[0,ndx]
-print 'best depth:', depth[0,ndx]
-print 'best midtime:', midtime[0,ndx]
+bp.__bls_pulse_binned(time, flux, fluxerr, samples, 2., 0.05, 1.5, srsq, duration,
+    depth, midtime)
+
+ndx = np.argmax(srsq)
+print 'best duration:', duration[ndx]
+print 'best depth:', depth[ndx]
+print 'best midtime:', midtime[ndx]
 

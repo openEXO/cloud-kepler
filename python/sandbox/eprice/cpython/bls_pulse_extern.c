@@ -5,6 +5,56 @@
 #define max(a,b)        (a > b ? a : b)
 
 
+int do_bin_segment(double *time, double *flux, double *fluxerr, int nbins, 
+    double segsize, int nsamples, int n, int *ndx, double *stime, double *sflux, 
+    double *sfluxerr, double *samples)
+{
+    /**
+     * This function is intended to be a very optimized phase-binning implementation.
+     * We assume that the time is already sorted and zero-based; both are relatively
+     * inexpensive operations and can be carried out from Python. The user supplies
+     * the time index of the beginning of the segment in `ndx`, and the time index of
+     * the beginning of the next segment is returned by the same pointer.
+     */
+
+    /* Calculate the beginning and end times for this segment. */
+    double start = ((double) n) * segsize, end = start + segsize;
+
+    /* Calculate the size of a single bin. */
+    double binsize = segsize / ((double) nbins);
+
+    /* We keep track of the time index, bin index, and number of points in this bin. */
+    int i = *ndx, j;
+
+    while ((time[i] < end) && (i < nsamples))
+    {
+        j = (int) floor((time[i] - start) / binsize);
+
+        /* We're just adding here; we'll divide by the count number at the end. */
+        stime[j] += time[i];
+        sflux[j] += flux[i];
+        sfluxerr[j] += sfluxerr[i];
+        samples[j] += 1.;
+
+        /* Advance to the next sample. */
+        i++;
+    }
+
+    /* Return the start index of the next segment to the caller. */
+    *ndx = i;
+
+    for (i = 0; i < nbins; i++)
+    {
+        /* Take the arithmetic mean. */
+        stime[i] /= samples[i];
+        sflux[i] /= samples[i];
+        sfluxerr[i] /= samples[i];
+    }
+
+    return 0;
+}
+
+
 int do_bls_pulse_segment(double *time, double *flux, double *fluxerr, double *samples,
     int nbins, int n, int nbins_min_dur, int nbins_max_dur, double *srsq, 
     double *duration, double *depth, double *midtime)
@@ -25,6 +75,8 @@ int do_bls_pulse_segment(double *time, double *flux, double *fluxerr, double *sa
     {
         /* minimum possible value is 0 */
         srsqmax = 0.;
+        bestdur = i;
+        bestdepth = NAN;
         
         s = 0.;
         r = 0.;
@@ -35,6 +87,9 @@ int do_bls_pulse_segment(double *time, double *flux, double *fluxerr, double *sa
          * nested loops. */
         for (k = i; k < i + nbins_min_dur; k++)
         {
+            if (samples[k] == 0.)
+                continue;
+
             s += flux[k];
             r += samples[k];
             d = min(d, flux[k]);
@@ -44,6 +99,9 @@ int do_bls_pulse_segment(double *time, double *flux, double *fluxerr, double *sa
         {
             /* i and j will always be valid values for i1, i2 as defined in the algorithm
              * of Kovacs, Zucker, & Mazeh (2002). */
+
+            if (samples[j] == 0.)
+                continue;
 
             s += flux[j];
             r += samples[j];
