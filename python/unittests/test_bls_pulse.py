@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import sys
 import numpy as np
-from numpy.polynomial import polynomial as poly
-import matplotlib.pyplot as plt
 from simulate import simulate_box_lightcurve
-from bls_pulse import bls_pulse_main, __lsqclip_detrend as detrend
+from bls_pulse import bls_pulse_main
 
 
 def is_straddling(tmid, tdur, segsize, time):
@@ -78,43 +77,27 @@ if __name__ == '__main__':
 
                 errstring = '    Transit {0: <3d}.....FAIL\n'.format(i)
 
-                try:
-                    if diff_midtime > midtime_atol:
-                        errstring += 'MIDTIME: Expected ' + str(midtime[i]) + ', measured ' + \
-                            str(bls_mid[j,ndx]) + ', diff. ' + str(diff_midtime) + \
-                            ', allowed diff. ' + str(midtime_atol)
-                        print errstring
-                        raise RuntimeError
-                    elif diff_depth / depth[i] > depth_rtol:
-                        errstring += 'DEPTH: Expected ' + str(depth[i]) + ', measured ' + \
-                            str(bls_dp[j,ndx]) + ', rel. diff. ' + \
-                            str(diff_depth / depth[i] * 100) + '%, allowed rel. diff. ' + \
-                            str(depth_rtol * 100) + '%'
-                        print errstring
-                        raise RuntimeError
-                    elif diff_duration / duration[i] > duration_rtol:
-                        errstring += 'DURATION: Expected ' + str(duration[i]) + ', measured ' + \
-                            str(bls_du[j,ndx]) + ', rel. diff. ' + \
-                            str(diff_duration / duration[i] * 100) + '%, allowed diff. ' + \
-                            str(duration_rtol * 100) + '%'
-                        print errstring
-                        raise RuntimeError
-                    else:
-                        # All values within relative or absolute tolerances.
-                        print '    Transit {0: <3d}.....PASS'.format(i)
-                except RuntimeError:
-                    start = segsize * float(j)
-                    end = start + segsize
-                    ndx2 = np.where((time >= start) & (time < end))
-
-                    def boxcar(time, duration, depth, midtime):
-                        flux = np.ones_like(time)
-                        ndx2 = np.where((time >= midtime - duration / 2.) & (time < midtime + duration / 2.))
-                        flux[ndx2] = 1. - depth
-                        return flux
-
-                    plt.plot(time[ndx2], flux[ndx2], color='b')
-                    mod = boxcar(time[ndx2], bls_du[j,ndx], bls_dp[j,ndx], bls_mid[j,ndx])
-                    plt.plot(time[ndx2], mod, color='g', lw=2.)
-                    plt.show()
+                if diff_midtime > midtime_atol:
+                    errstring += 'MIDTIME: Expected ' + str(midtime[i]) + ', measured ' + \
+                        str(bls_mid[j,ndx]) + ', diff. ' + str(diff_midtime) + \
+                        ', allowed diff. ' + str(midtime_atol)
+                    print errstring
+                    sys.exit(1)
+                elif diff_depth / depth[i] > depth_rtol:
+                    errstring += 'DEPTH: Expected ' + str(depth[i]) + ', measured ' + \
+                        str(bls_dp[j,ndx]) + ', rel. diff. ' + \
+                        str(diff_depth / depth[i] * 100) + '%, allowed rel. diff. ' + \
+                        str(depth_rtol * 100) + '%'
+                    print errstring
+                    sys.exit(1)
+                elif diff_duration / duration[i] > duration_rtol:
+                    errstring += 'DURATION: Expected ' + str(duration[i]) + ', measured ' + \
+                        str(bls_du[j,ndx]) + ', rel. diff. ' + \
+                        str(diff_duration / duration[i] * 100) + '%, allowed diff. ' + \
+                        str(duration_rtol * 100) + '%'
+                    print errstring
+                    sys.exit(1)
+                else:
+                    # All values within relative or absolute tolerances.
+                    print '    Transit {0: <3d}.....PASS'.format(i)
 
