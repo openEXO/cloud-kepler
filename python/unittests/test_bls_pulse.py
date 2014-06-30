@@ -69,13 +69,13 @@ if __name__ == '__main__':
             ndx = np.argmax(srsq[j,:])
 
             if is_straddling(midtime[i], duration[i], segsize, time):
-                print '    Transit {0: <3d}.....PASS (straddling)'.format(i)
+                print '    Transit %02d.....PASS (straddling)' % i
             else:
                 diff_midtime = np.absolute(midtime[i] - bls_mid[j,ndx])
                 diff_depth = np.absolute(depth[i] - bls_dp[j,ndx])
                 diff_duration = np.absolute(duration[i] - bls_du[j,ndx])
 
-                errstring = '    Transit {0: <3d}.....FAIL\n'.format(i)
+                errstring = '    Transit %02d.....FAIL\n' % i
 
                 if diff_midtime > midtime_atol:
                     errstring += 'MIDTIME: Expected ' + str(midtime[i]) + ', measured ' + \
@@ -99,5 +99,5 @@ if __name__ == '__main__':
                     sys.exit(1)
                 else:
                     # All values within relative or absolute tolerances.
-                    print '    Transit {0: <3d}.....PASS'.format(i)
+                    print '    Transit %02d.....PASS' % i
 

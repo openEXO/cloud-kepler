@@ -19,3 +19,4 @@ install:
 # Run test
 script:
   - cd python
+  - python -m unittests.test_bls_pulse
