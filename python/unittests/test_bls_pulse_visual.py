@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+'''
+"The nuclear option" of testing. Only use interactively. This code performs the
+BLS pulse algorithm and then plots each segment's results.
+'''
+
+import sys
 import numpy as np
 from numpy.polynomial import polynomial as poly
 from bls_pulse import bls_pulse_main, __lsqclip_detrend, __get_binned_segment
@@ -35,7 +41,7 @@ if __name__ == '__main__':
         t = time[ndx]
         f = flux[ndx]
         e = fluxerr[ndx]
-        plt.plot(t, f)
+        plt.plot(t, f, color='b', label='Raw data')
 
         stime = np.zeros((nbins,), dtype='float64')
         sflux = np.zeros((nbins,), dtype='float64')
@@ -45,16 +51,19 @@ if __name__ == '__main__':
             save, stime, sflux, sfluxerr, samples)
         coeffs = __lsqclip_detrend(stime, sflux, sfluxerr, 3)
         sflux /= poly.polyval(stime, coeffs)
-        plt.scatter(stime, sflux, color='g')
+        plt.scatter(stime, sflux, color='g', label='Binned/detrended')
 
         ndx = np.argmax(srsq[i,:])
-        print srsq[i,ndx], duration[i,ndx], depth[i,ndx], midtime[i,ndx]
+        sys.stdout.write('%e\t%f\t%f\t%f\n' % (srsq[i,ndx], duration[i,ndx], depth[i,ndx],
+            midtime[i,ndx]))
+        sys.stdout.flush()
 
         tt = np.linspace(np.amin(t), np.amax(t), 1000)
         ff = boxcar(tt, duration[i,ndx], depth[i,ndx], midtime[i,ndx])
-        plt.plot(tt, ff)
+        plt.plot(tt, ff, color='r', lw=2., label='Best box')
 
         plt.xlim(np.amin(t), np.amax(t))
         plt.ylim(np.amin(f), np.amax(f))
+        plt.legend(loc='best')
         plt.show()
 

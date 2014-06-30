@@ -5,7 +5,7 @@ import sys
 import numpy as np
 import cProfile
 from common import read_mapper_output
-from bls_pulse import bls_pulse_main, __lsqclip_detrend as detrend
+from bls_pulse import bls_pulse_main
 from argparse import ArgumentParser
 from configparser import SafeConfigParser, NoOptionError
 
