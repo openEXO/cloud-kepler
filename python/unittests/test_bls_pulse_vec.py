@@ -36,14 +36,14 @@ def is_straddling(tmid, tdur, segsize, lc):
     '''
     # Extract the time from the DataFrame.
     time = np.array(lc.index.values, dtype='float64')
-    
+
     # The segment break may fall before or after midtransit; calculate those times.
     n = np.floor((tmid - np.amin(time)) / segsize)
     before = segsize * float(n)
     after = segsize * float(n + 1)
-    
+
     # Is the segment break within half a duration of midtransit?
-    if before > tmid - segsize / 2. or after < tmid + segsize / 2.:
+    if before > tmid - tdur / 2. or after < tmid + tdur / 2.:
         return True
     else:
         return False
@@ -55,7 +55,7 @@ def is_straddling(tmid, tdur, segsize, lc):
 def main(err_on_fail=True, allow_straddling=True):
 
     ## Generate repeatable, random tranist parameters selected from a uniform distribution for testing purposes.
-    
+
     ## This is the value of 1 minute in days (at least roughly).
     minute_in_days = 1. / (60. * 24.)
 
@@ -95,10 +95,10 @@ def main(err_on_fail=True, allow_straddling=True):
 
     ## What is the transit duration range?  These are in hours.
     duration_range = (1., 5.)
-    
+
     ## Start the random seed variable so the random sampling is repeatable.
     random.seed(4)
-    
+
     ## Create random distribution of periods, depths, and durations.
     starid_list = [str(x+1).zfill(2) for x in range(n_lcs)]
     period_list = [random.uniform(per_range[0], per_range[1]) for x in range(n_lcs)]
@@ -136,14 +136,14 @@ def main(err_on_fail=True, allow_straddling=True):
             except ValueError:
                 print "*** Warning in TEST_BLS_PULSE: All segments had no events.  Unable to run pass/fail test, defaulting to FAIL.."
                 print "   Transit {0: <3d}...FAIL".format(tnum)
-                
+
                 if err_on_fail:
                     sys.exit(1)
             else:
                 ## Test pass/fail criteria using the closest segment event.
                 if abs(ttime-these_srs["midtimes"].values[closest_index]) <= midtime_precision_threshold and abs(tdepth-these_srs["depths"].values[closest_index])/tdepth <= depth_rel_precision_threshold and abs(tduration-these_srs["durations"].values[closest_index])/tduration <= duration_rel_precision_threshold:
                     print "   Transit {0: <3d}.....PASS".format(tnum)
-                elif allow_straddling and is_straddling(ttime, tduration, segment_size, 
+                elif allow_straddling and is_straddling(ttime, tduration, segment_size,
                 this_lc['lc']):
                     print "   Transit {0: <3d}.....PASS (straddling)".format(tnum)
                 else:
@@ -169,9 +169,9 @@ if __name__ == "__main__":
     logger.setLevel(logging.INFO)
 
     parser = ArgumentParser()
-    parser.add_argument('-e', help='Throw an error if a test fails?', default=1, 
+    parser.add_argument('-e', help='Throw an error if a test fails?', default=1,
         dest='err', type=int)
-    parser.add_argument('-s', help='Allow straddling transits to pass?', default=1, 
+    parser.add_argument('-s', help='Allow straddling transits to pass?', default=1,
         dest='straddling', type=int)
     args = parser.parse_args()
 
