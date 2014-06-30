@@ -1,98 +1,124 @@
-############################################################################################
-# Place import commands and logging options.
-############################################################################################
-import logging
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import sys
+import numpy as np
+import cProfile
+from common import read_mapper_output
+from bls_pulse import bls_pulse_main, __lsqclip_detrend as detrend
 from argparse import ArgumentParser
-import bls_pulse
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-############################################################################################
+from configparser import SafeConfigParser, NoOptionError
 
 
-############################################################################################
-# This function sets up command-line options and arguments through the OptionParser class.
-############################################################################################
-def setup_input_options(parser):
-    parser.add_argument("-p", "--segment", action="store", type=float, dest="segment", 
-        help="[Required] Trial segment (days).  There is no default value.")
-    parser.add_argument("-m", "--mindur", action="store", type=float, dest="min_duration", 
-        default=0.0416667, help="[Optional] Minimum transit duration to search for (days). "
-            "Default = 0.0416667 (1 hour).")
-    parser.add_argument("-d", "--maxdur", action="store", type=float, dest="max_duration", 
-        default=12.0, help="[Optional] Maximum transit duration to search for (days). "
-            "Default = 0.5 (12 hours).")
-    parser.add_argument("-b", "--nbins", action="store", type=int, dest="n_bins", default=100, 
-        help="[Optional] Number of bins to divide the lightcurve into.  Default = 100.")
-    parser.add_argument("--direction", action="store", type=int, dest="direction", default=0, 
-        help="[Optional] Direction of box wave to look for.  1=blip (top-hat), -1=dip (drop), "
-            "0=both (most significant).  Default = 0")
-    parser.add_argument("--printformat", action="store", type=str, dest="print_format", 
-        default="encoded", help="[Optional] Format of strings printed to screen.  Options are "
-            "'encoded' (base-64 binary) or 'normal' (human-readable ASCII strings).  Set to "
-            "any other string (e.g., 'none') to supress output printing.  Default = 'encoded'.")
-    parser.add_argument("-v", "--verbose", action="store_true", dest="verbose", default=False, 
-        help="[Optional] Turn on verbose messages/logging.  Default = False.")
-############################################################################################
-
-
-############################################################################################
-# This function checks input arguments satisfy some minimum requirements.
-############################################################################################
-def check_input_options(parser, args):
-    if args.segment <= 0.0:
-        parser.error("Segment size must be > 0.")
-    if args.min_duration <= 0.0:
-        parser.error("Min. duration must be > 0.")
-    if args.max_duration <= 0.0:
-        parser.error("Max. duration must be > 0.")
-    if args.max_duration <= args.min_duration:
-        parser.error("Max. duration must be > min. duration.")
-    if args.n_bins <= 0:
-        parser.error("Number of bins must be > 0.")
-############################################################################################
-
-
-############################################################################################
-# This class defines a generic Exception to use for errors raised in DRIVE_MAKE_LC and is 
-# specific to this module. It simply returns the given value when raising the exception, 
-# e.g., raise DriveBLSPulseError("Print this string") -> __main__.MyError: 'Print this string.'
-############################################################################################
-class DriveBLSPulseError(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
-############################################################################################
-
-
-############################################################################################
-# This is the main routine.  It calls bls_pulse by passing all commands through standard 
-# in as part of the processing "chain".
-############################################################################################
-def main():
-    # Define input options.
+def __init_parser(defaults):
+    '''
+    Set up an argument parser for all possible command line options. Returns the
+    parser object.
+    '''
     parser = ArgumentParser()
-    setup_input_options(parser)
-    
-    # Parse input options from the command line.
+    parser.add_argument('-c', '--config', action='store', type=str, dest='config',
+        help='Configuration file to read. Configuration supersedes command line arguments.')
+    parser.add_argument('-p', '--segment', action='store', type=float, dest='segment',
+        help='Trial segment (days). There is no default value.')
+    parser.add_argument('-m', '--mindur', action='store', type=float, dest='mindur',
+        default=float(defaults['min_duration']), help='[Optional] Minimum transit '
+        'duration to search for (days).')
+    parser.add_argument('-d', '--maxdur', action='store', type=float, dest='maxdur',
+        default=float(defaults['max_duration']), help='[Optional] Maximum transit '
+        'duration to search for (days).')
+    parser.add_argument('-b', '--nbins', action='store', type=int, dest='nbins',
+        default=int(defaults['n_bins']), help='[Optional] Number of bins to divide '
+        'the lightcurve into.')
+    parser.add_argument('--direction', action='store', type=int, dest='direction',
+        default=bool(defaults['direction']), help='[Optional] Direction of box wave to '
+        'look for. 1 = blip (top-hat), -1 = dip (drop), 0 = most significant, 2 = both.')
+    parser.add_argument('-f', '--printformat', action='store', type=str, dest='fmt',
+        default=defaults['print_format'], help='[Optional] Format of string printed to '
+        'screen. Options are \'encoded\' (base-64 binary) or \'normal\' (human-readable '
+        'ASCII strings). Set to any other string (e.g., \'none\') to supress output printing.')
+    parser.add_argument('-v', '--verbose', action='store_true', dest='verbose',
+        default=bool(defaults['verbose']), help='[Optional] Turn on verbose messages/logging.')
+    parser.add_argument('-x', '--profile', action='store_true', dest='profile',
+        default=bool(defaults['profiling']), help='[Optional] Turn on speed profiling.')
+
+    return parser
+
+
+def __check_args(segment, mindur, maxdur, nbins, direction):
+    '''
+    Sanity-checks the input arguments; raises ValueError if any checks fail.
+    '''
+    if segment <= 0.:
+        raise ValueError('Segment size must be > 0.')
+    if mindur <= 0.:
+        raise ValueError('Minimum duration must be > 0.')
+    if maxdur <= 0.:
+        raise ValueError('Maximum duration must be > 0.')
+    if maxdur <= mindur:
+        raise ValueError('Maximum duration must be > minimum duration.')
+    if nbins <= 0:
+        raise ValueError('Number of bins must be > 0.')
+    if direction not in [-1, 0, 1, 2]:
+        raise ValueError('%d is not a valid value for direction.' % direction)
+
+
+if __name__ == '__main__':
+    # This is a global list of default values that will be used by the argument parser
+    # and the configuration parser.
+    defaults = {'min_duration':'0.0416667', 'max_duration':'0.5', 'n_bins':'100',
+        'direction':'0', 'print_format':'encoded', 'verbose':'0', 'profiling':'0'}
+
+    # Set up the parser for command line arguments and read them.
+    parser = __init_parser(defaults)
     args = parser.parse_args()
 
-    # The trial segment is a "required" "option", at least for now. So, check to make sure 
-    # it exists.
-    if not args.segment:
-        parser.error("No trial segment specified.")
+    if not args.config:
+        # No configuration file specified -- read in command line arguments.
+        if not args.segment:
+            parser.error('No trial segment specified and no configuration file given.')
 
-    # Check input arguments are valid and sensible.
-    check_input_options(parser, args)
+        segment = args.segment
+        mindur = args.mindur
+        maxdur = args.maxdur
+        nbins = args.nbins
+        direction = args.direction
+        fmt = args.fmt
+        verbose = args.verbose
+        profile = args.profile
+    else:
+        # Configuration file was given; read in that instead.
+        cp = SafeConfigParser(defaults)
+        cp.read(args.config)
 
-    # Call bls_pulse.
-    bls_pulse.main(args.segment, None, args.min_duration, args.max_duration, args.n_bins, 
-        args.direction, args.print_format, args.verbose)
+        segment = cp.getfloat('DEFAULT', 'segment')
+        mindur = cp.getfloat('DEFAULT', 'min_duration')
+        maxdur = cp.getfloat('DEFAULT', 'max_duration')
+        nbins = cp.getint('DEFAULT', 'n_bins')
+        direction = cp.getint('DEFAULT', 'direction')
+        fmt = cp.get('DEFAULT', 'print_format')
+        verbose = cp.getboolean('DEFAULT', 'verbose')
+        profile = cp.getboolean('DEFAULT', 'profiling')
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    logger.setLevel(logging.INFO)
-    main()
-############################################################################################
+    # Perform any sanity-checking on the arguments.
+    __check_args(segment, mindur, maxdur, nbins, direction)
+
+    # Send the data to the algorithm.
+    for k, q, time, flux, fluxerr in read_mapper_output(sys.stdin):
+        # Extract the array columns.
+        time = np.array(time, dtype='float64')
+        flux = np.array(flux, dtype='float64')
+        fluxerr = np.array(fluxerr, dtype='float64')
+
+        if profile:
+            # Turn on profiling.
+            pr = cProfile.Profile()
+            pr.enable()
+
+        srsq, duration, depth, midtime = bls_pulse_main(time, flux, fluxerr, nbins,
+            segment, mindur, maxdur)
+
+        if profile:
+            # Turn off profiling.
+            pr.disable()
+            pr.print_stats()
 

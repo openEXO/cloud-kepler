@@ -1,46 +1,57 @@
 #!/usr/bin/env python
-"""
+'''
 A more advanced Reducer, using Python iterators and generators.
 From http://www.michael-noll.com/tutorials/writing-an-hadoop-mapreduce-program-in-python/
-"""
+'''
 
+import sys
+import json
+import base64
+import zlib
+import numpy as np
 from itertools import groupby
 from operator import itemgetter
-import sys
-import base64
-import numpy as np
-from zlib import decompress, compress
-import json
-
-def read_mapper_output(file, separator='\t'):
-    for line in file:
-        kic, quarter, uri, fits_string = line.rstrip().split(separator)
-        fits_array = json.loads((decompress(base64.b64decode(fits_string))))
-        yield kic, quarter, uri, fits_array
+from common import read_mapper_output, encode_list
 
 
-def encode_list(flux_list):
-    return base64.b64encode(compress(json.dumps(flux_list)))
+def read_mapper_output(f, separator='\t'):
+    '''
+    Reads data from the input file, assuming the given separator, in base64 format;
+    yields the decoded and split line. The format is kic_id, quarter, uri, time, flux,
+    flux_error for each line.
+    '''
+    for line in f:
+        kic, quarter, uri, t, f, e = line.rstrip().split(separator)
+        time = json.loads(zlib.decompress(base64.b64decode(t)))
+        flux = json.loads(zlib.decompress(base64.b64decode(f)))
+        fluxerr = json.loads(zlib.decompress(base64.b64decode(e)))
+        yield kic, quarter, uri, time, flux, fluxerr
 
-def main(separator='\t'):
+
+if __name__ == '__main__':
     # input comes from STDIN (standard input)
-    data = read_mapper_output(sys.stdin, separator=separator)
+    data = read_mapper_output(sys.stdin)
+
     # groupby groups multiple quarters together for each Kepler ID
     #   current_kic is current Kepler ID
     #   group - iterator yielding all ["&lt;current_word&gt;", "&lt;count&gt;"] items
-    concatenated_time_flux_eflux = list()
+
     for current_kic, group in groupby(data, itemgetter(0)):
         try:
-            all_quarters = [[q, flux] for _, q, _, flux in group]
-            concatenated_time_flux_eflux = list()
-            for _, f in all_quarters:
-                concatenated_time_flux_eflux.extend(f)
-            all_q = [q for q,_ in all_quarters]
-            print "%s%s%s%s%s" % (current_kic, separator, all_q, separator,
-                                  encode_list(concatenated_time_flux_eflux))
+            all_quarters = [[q, time, flux, eflux] for _, q, _, time, flux, eflux in group]
+            concatenated_time = list()
+            concatenated_flux = list()
+            concatenated_eflux = list()
+
+            for _, t, f, e in all_quarters:
+                concatenated_time.extend(t)
+                concatenated_flux.extend(f)
+                concatenated_eflux.extend(e)
+
+            all_q = [q for q, _, _, _ in all_quarters]
+            print '\t'.join([str(current_kic), str(all_q), encode_list(concatenated_time),
+                encode_list(concatenated_flux), encode_list(concatenated_eflux)])
         except ValueError:
             # count was not a number, so silently discard this item
             pass
 
-if __name__ == "__main__":
-    main()

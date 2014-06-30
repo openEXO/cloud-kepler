@@ -3,6 +3,7 @@
 
 #define min(a,b)        (a < b ? a : b)
 #define max(a,b)        (a > b ? a : b)
+#define extreme(a,b)    (fabs(a) > fabs(b) ? a : b)
 
 
 int do_bin_segment(double *time, double *flux, double *fluxerr, int nbins, 
@@ -33,7 +34,7 @@ int do_bin_segment(double *time, double *flux, double *fluxerr, int nbins,
         /* We're just adding here; we'll divide by the count number at the end. */
         stime[j] += time[i];
         sflux[j] += flux[i];
-        sfluxerr[j] += sfluxerr[i];
+        sfluxerr[j] += fluxerr[i];
         samples[j] += 1.;
 
         /* Advance to the next sample. */
@@ -78,6 +79,9 @@ int do_bls_pulse_segment(double *time, double *flux, double *fluxerr, double *sa
         bestdur = i;
         bestdepth = NAN;
         
+        if (samples[i] == 0.)
+            continue;
+        
         s = 0.;
         r = 0.;
         d = flux[i];
@@ -92,7 +96,7 @@ int do_bls_pulse_segment(double *time, double *flux, double *fluxerr, double *sa
 
             s += flux[k];
             r += samples[k];
-            d = min(d, flux[k]);
+            d = extreme(d, flux[k]);
         }
         
         for (j = min(i + nbins_min_dur, nbins); j < min(i + nbins_max_dur, nbins); j++)
@@ -105,10 +109,10 @@ int do_bls_pulse_segment(double *time, double *flux, double *fluxerr, double *sa
 
             s += flux[j];
             r += samples[j];
-            d = fmin(d, flux[j]);
-            
+            d = extreme(d, flux[j]);
+
             srsqnew = (s * s) / (r * (nn - r));
-            
+
             if (srsqnew > srsqmax)
             {
                 /* We found a better event than previously; overwrite the "best" 
