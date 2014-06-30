@@ -61,7 +61,7 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3):
         # Perform sigma clipping and polynomial detrending.
         ndx = np.where(np.isfinite(sflux))[0]
         
-        if len(ndx) <= detrend_order + 1:
+        if len(ndx) <= detrend_order + 1 and detrend_order != -1:
             # There aren't enough points to do any detrending; go on to the
             # next segment.
             srsq[i,:] = 0.
@@ -70,8 +70,9 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3):
             midtime[i,:] = np.nan
             continue
 
-        coeffs = __lsqclip_detrend(stime[ndx], sflux[ndx], sfluxerr[ndx], detrend_order)
-        sflux /= poly.polyval(stime, coeffs)
+        if detrend_order != -1:
+            coeffs = __lsqclip_detrend(stime[ndx], sflux[ndx], sfluxerr[ndx], detrend_order)
+            sflux /= poly.polyval(stime, coeffs)
 
         # Call the algorithm.
         __bls_pulse_binned(stime, sflux, sfluxerr, samples, segsize, mindur, maxdur, 
@@ -112,14 +113,13 @@ int order, double threshold=3., int niter=3):
     y = flux.copy()
     yerr = fluxerr.copy()
     i = 0
-
+    
     while i < niter and len(x) > order + 1:
         # Fit the current data or residuals with a polynomial.
         coeffs = poly.polyfit(x, y, order, w=yerr)
         resid = y - poly.polyval(x, coeffs)
 
         # Calculate the root-mean-square statistic for the fit.
-        #sigma = np.sqrt(np.sum((y - coeffs[0])**2.) / len(x))
         sigma = np.sqrt(np.sum(resid**2.) / len(x))
 
         # Perform the sigma clipping.

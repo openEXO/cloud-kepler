@@ -25,7 +25,7 @@ def simulate_box_lightcurve(period, duration, depth, shift, sn, nsamples, baseli
     flux[ndx] = 1. - depth
 
     # Add in the random errors.
-    flux += np.random.normal(0., sigma)
+    flux += np.random.normal(0., sigma, size=(nsamples,))
 
     # Calculate durations, depths, and midtimes.
     ntransits = np.ceil((baseline - shift * period) / period)
