@@ -44,6 +44,9 @@ if __name__ == '__main__':
     nsamples = np.ceil(baseline * minutes_per_day)
     segsize, mindur, maxdur, nbins = (2., 0.01, 0.5, 1000)
 
+    # To make it deterministic, seed the PRNG.
+    np.random.seed(4)
+
     period_list = np.random.uniform(2., 30., size=n)                # days
     duration_list = np.random.uniform(1. / 24., 5. / 24., size=n)   # days
     depth_list = np.random.uniform(0.01, 0.5, size=n)
