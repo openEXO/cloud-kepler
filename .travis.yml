@@ -19,4 +19,5 @@ install:
 # Run test
 script:
   - cd python
+  - make
   - python -m unittests.test_bls_pulse
