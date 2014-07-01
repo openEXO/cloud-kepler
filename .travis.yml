@@ -20,5 +20,6 @@ install:
 # Run test
 script:
   - cd python
+  - python -m unittests.test_get_data
   - python -m unittests.test_bls_pulse_vec
   - python -m unittests.test_bls_pulse
