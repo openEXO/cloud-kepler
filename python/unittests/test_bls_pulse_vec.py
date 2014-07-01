@@ -143,7 +143,7 @@ def main(err_on_fail=True, allow_straddling=True):
                 ## Test pass/fail criteria using the closest segment event.
                 if abs(ttime-these_srs["midtimes"].values[closest_index]) <= midtime_precision_threshold and abs(tdepth-these_srs["depths"].values[closest_index])/tdepth <= depth_rel_precision_threshold and abs(tduration-these_srs["durations"].values[closest_index])/tduration <= duration_rel_precision_threshold:
                     print "   Transit {0: <3d}.....PASS".format(tnum)
-                elif allow_straddling and is_straddling(ttime, tduration, segment_size,
+                elif allow_straddling and is_straddling(ttime, tduration / 24., segment_size,
                 this_lc['lc']):
                     print "   Transit {0: <3d}.....PASS (straddling)".format(tnum)
                 else:
