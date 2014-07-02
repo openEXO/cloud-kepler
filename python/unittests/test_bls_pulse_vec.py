@@ -117,7 +117,7 @@ def main(err_on_fail=True, allow_straddling=True, ofile=None):
         this_lc = bls_vec_simulator.bls_vec_simulator(p, dr, d, ph, signal_to_noise, n_samples, baseline)
 
         ## Run the lightcurve through bls_pulse_vec.
-        these_srs = bls_pulse_vec(this_lc['lc'], segment_size, min_duration, max_duration, n_bins_blspulse, direction=-1)
+        these_srs = bls_pulse_vec(this_lc['lc'], segment_size, min_duration, max_duration, n_bins_blspulse, direction=0)
 
         ## Compare to see if each of the simulated transits is found by BLS_PULSE.
         for tnum,ttime,tdepth,tduration in zip(range(len(this_lc['transit_times'])), this_lc['transit_times'], this_lc['transit_depths'], this_lc['transit_durations']):

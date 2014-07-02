@@ -32,7 +32,7 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3):
     __prepare_lightcurve(time, flux, fluxerr)
 
     nsamples = np.size(time)
-    nsegments = np.ceil(np.nanmax(time) / segsize)
+    nsegments = np.floor(np.nanmax(time) / segsize) + 1
     save = 0
 
     # This memory is only allocated once and will be reused.
@@ -160,7 +160,7 @@ np.ndarray[double, ndim=1, mode='c'] samples, double segsize, double mindur, dou
 np.ndarray[double, ndim=1, mode='c'] srsq, np.ndarray[double, ndim=1, mode='c'] duration,
 np.ndarray[double, ndim=1, mode='c'] depth, np.ndarray[double, ndim=1, mode='c'] midtime):
     '''
-    Takes binned arrays containing the time, flux, flux error, and  sample counts, 
+    Takes binned arrays containing the time, flux, flux error, and sample counts, 
     assuming that flux is already binned, detrended, and normalized to 1. Calls an 
     external C function to perform BLS algorithm on each lightcurve segment.
     '''

@@ -92,7 +92,7 @@ this_seg, lc_samplerate):
                     #thisMidTime = this_seg[0] + 0.5 * (i1+i2) * trial_segment / nbins
                     thisMidTime = (binTime[i2] + binTime[i1]) / 2.
 
-    # NOTE: Added by emprice
+    # NOTE: Added by emprice.
     binFlx += c
     thisDepth += c
 
@@ -136,18 +136,12 @@ direction=0, print_format='none', verbose=False):
     # in a signal that is min_duration long, or a single data point, whichever is larger.
     r_min = int(np.ceil(min_duration / lc_samplerate))
 
-    # Calculate mean of the flux.
-    #mean_flux_val = np.mean(flux)
-
-    # Create a version of the flux that has had the mean subtracted.
-    #flux_minus_mean = flux - mean_flux_val
-
     # Divide the input time and flux arrays into segments.
     #seg_stepsize = int(round(segment_size / lc_samplerate))
     #segments = [(x,time[x:x+seg_stepsize]) for x in xrange(0,len(time),seg_stepsize)]
     #flux_segments = [(x,flux_minus_mean[x:x+seg_stepsize]) for x in
     #    xrange(0,len(flux_minus_mean),seg_stepsize)]
-    nsegments = int(np.ceil((np.amax(time) - np.amin(time)) / segment_size))
+    nsegments = int(np.floor((np.amax(time) - np.amin(time)) / segment_size) + 1.)
     segments = [(q,time[(time >= q*segment_size) & (time < (q+1)*segment_size)]) for
         q in xrange(nsegments)]
     flux_segments = [(q,flux[(time >= q*segment_size) & (time < (q+1)*segment_size)]) for
@@ -202,20 +196,18 @@ direction=0, print_format='none', verbose=False):
             maxdur = convert_duration_to_bins(max_duration, nbins, segment_size,
                 duration_type="max")
 
+        # NOTE: Modified by emprice.
         # See http://stackoverflow.com/questions/6163334/binning-data-in-python-with-scipy-numpy
-        # Try binning it my way...
+        # Compute average times and fluxes in each bin, and count the number of points per
+        # bin.
         bin_slices = np.linspace(float(jj) * segment_size, float(jj + 1) * segment_size, nbins+1)
-        # Get the indices of the original array belonging to each bin.
         bin_memberships = np.digitize(this_seg, bin_slices)
-
-        # Compute the mean of the timestamps in each bin.
         binned_times = [this_seg[bin_memberships == i].mean() for i in range(1, len(bin_slices))]
         binned_fluxes = [this_flux_seg[bin_memberships == i].mean() for i in
             range(1, len(bin_slices))]
-        # Fill in the number of points per bin, for this bin in this segment.
         ppb = [len(this_seg[bin_memberships == i]) for i in range(1, len(bin_slices))]
 
-        # THIS IS A STUB WHERE WE WOULD LOCALLY DE-TREND THIS SECTION OF THE LIGHTCURVE!
+        # TODO: Detrending!
 
         # Determine SR_Max.  The return tuple consists of:
         #      (Signal Residue, Signal Duration, Signal Depth, Signal MidTime)
@@ -251,6 +243,7 @@ direction=0, print_format='none', verbose=False):
     # Return each segment's best transit event.  Create a pandas data frame based on the
     # array of srMax and transit parameters.  The index of the pandas array will be the
     # segment number.
+    raise ValueError
     return_data = pd.DataFrame({ "srMaxVals": srMax, "durations": transitDuration,
         "depths":transitDepth, "midtimes":transitMidTime},
         index=pd.Index(range(len(segments))))

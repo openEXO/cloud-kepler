@@ -18,13 +18,10 @@ def detrend_mean_remove(flux, period):
     Detrend removing the mean of each period. For each period-length segment, compute
     and remove the mean flux.
     '''
-    def mean_remove(x):
-        return x - x.mean()
-
-    segment_ids = np.array(flux.reset_index().time/period).astype(np.int)
+    segment_ids = np.floor(np.array(flux.reset_index().time/period))
 
     # Transform applies a function to each segment
-    return flux.groupby(segment_ids).transform(mean_remove)
+    return flux.flux.groupby(segment_ids).transform(lambda x: x - x.mean())
 
 
 def detrend_pyke_lsqclip(segment, order):
@@ -66,16 +63,18 @@ def compute_signal_residual(binned_segment, matrix, duration, n_bins_min_duratio
     n = binned_segment_indexed.samples.sum()
     sr = s**2 / (r * (n - r))
 
-    sr[:,duration <= n_bins_min_duration] = np.nan
+    # NOTE: Modified by emprice. Durations can be the minimum value but not smaller.
+    sr[:,duration < n_bins_min_duration] = np.nan
     SR_index = np.unravel_index(np.ma.masked_invalid(sr).argmax(), sr.shape)
     i1 = int(SR_index[0])
     i2 = int(matrix[SR_index])
 
     # Make sure the best SR matches the desired direction.
     if s[SR_index]*direction >= 0:
-        return pd.Series(dict(phases=i1, durations=binned_segment_indexed.samples[i1:i2].sum(),
-            signal_residuals=sr[SR_index]**0.5, depths=binned_segment.flux[i1:i2].min(),
-            midtimes=0.5*(i1+i2)))
+        return pd.Series(dict(phases=i1,
+            durations=(binned_segment.time.values[i2]-binned_segment.time.values[i1]),
+            signal_residuals=sr[SR_index], depths=binned_segment.flux[i1:i2].min(),
+            midtimes=0.5*(binned_segment.time.values[i1]+binned_segment.time.values[i2])))
     else:
         return pd.Series(dict(phases=np.nan, durations=np.nan, signal_residuals=np.nan,
             depths=np.nan, midtimes=np.nan))
@@ -85,7 +84,8 @@ def phase_bin(segment, bins):
     '''
     Phase-bin a light curve segment.
     '''
-    grouper = segment.groupby(pd.cut(segment["phase"], bins))
+    # NOTE: emprice added `right` option to emualte behavior of other binning schemes.
+    grouper = segment.groupby(pd.cut(segment['phase'], bins, right=False))
     y = grouper.mean()
     y["samples"] = grouper.time.count()
     del y["segment"]
@@ -116,7 +116,6 @@ detrend_order=None, direction=0, remove_nan_segs=False):
       results : pd.DataFrame
         phase, duration, signal_residual, depth and midtime
     '''
-    # NOTE: These conditions should be guaranteed by the caller.
     if segment_size <= 0.0:
         raise ValueError("Segment size must be > 0.")
     if min_duration <= 0.0:
@@ -132,19 +131,16 @@ detrend_order=None, direction=0, remove_nan_segs=False):
     light_curve["phase"] = np.remainder(np.array(light_curve.index),segment_size) / segment_size
     sample_rate = np.median(np.diff(np.array(light_curve.index).astype(np.float)))
 
-    if detrend_order:
-        detrend_coefficients = {}
-        for segment_id, segment_data in light_curve.groupby("segment"):
-            if len(segment_data) > 100:
-                detrend_coefficients[segment_id], trend = detrend_pyke_lsqclip(segment_data,
-                    detrend_order)
-                light_curve.flux = light_curve.flux.subtract(trend, fill_value=0.)
+    # TODO: Detrending!
 
-    # Define equally spaced bins.
-    bins = np.linspace(0., 1., num=n_bins)
-
-    phase_binned_segments = light_curve.reset_index().groupby("segment").apply(lambda x:
+    # Define equally spaced bins and bin according to phase.
+    bins = np.linspace(0., 1., n_bins+1)
+    phase_binned_segments = light_curve.reset_index().groupby('segment').apply(lambda x:
         phase_bin(x, bins=bins))
+
+    # NOTE: Added by emprice. Subtract off the mean of each segment.
+    c = phase_binned_segments.reset_index().groupby('segment').flux.apply(lambda x: x.mean())
+    phase_binned_segments.flux = detrend_mean_remove(phase_binned_segments, segment_size)
 
     i1 = np.arange(n_bins - n_bins_min_duration)[:,None]
     duration = np.arange(0, n_bins_max_duration)
@@ -164,9 +160,10 @@ detrend_order=None, direction=0, remove_nan_segs=False):
     if remove_nan_segs:
         results = results.dropna()
 
-    results["midtimes"] *= segment_size/ n_bins
-    results["midtimes"] += light_curve.reset_index().groupby("segment").time.min()
-    results["durations"] *= sample_rate * 24.
+    results["durations"] *= 24.
+
+    # NOTE: Added by emprice. Reverse the mean correction from earlier.
+    results['depths'] += c
 
     if detrend_order:
         return results, detrend_coefficients
