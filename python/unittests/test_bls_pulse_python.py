@@ -55,8 +55,10 @@ def is_straddling(tmid, tdur, segsize, lc):
 ## This is the main routine.
 ############################################################################################
 def main(err_on_fail=True, allow_straddling=True, ofile=None):
-
     ## Generate repeatable, random tranist parameters selected from a uniform distribution for testing purposes.
+
+    if f:
+        f.write('#\tMeas. mid.\tAct. mid.\tMeas. dpth.\tAct. dpth.\tMeas. dur.\tAct. dur\n')
 
     ## This is the value of 1 minute in days (at least roughly).
     minute_in_days = 1. / (60. * 24.)
@@ -151,10 +153,10 @@ def main(err_on_fail=True, allow_straddling=True, ofile=None):
                     sys.exit(1)
             else:
                 if ofile:
-                    ofile.write('%d\t%f\t%f\t%f\n' % (tnum,
-                        these_srs['midtimes'].values[closest_index],
-                        these_srs['depths'].values[closest_index],
-                        these_srs['durations'].values[closest_index]))
+                    ofile.write('%d\t%f\t%f\t%f\t%f\t%f\t%f\n' % (tnum,
+                        these_srs['midtimes'].values[closest_index], ttime,
+                        these_srs['depths'].values[closest_index], tdepth,
+                        these_srs['durations'].values[closest_index], tduration))
 
                 ## Test pass/fail criteria using the closest segment event.
                 if abs(ttime-these_srs["midtimes"].values[closest_index]) <= midtime_precision_threshold and abs((tdepth-these_srs["depths"].values[closest_index])/tdepth) <= depth_rel_precision_threshold and abs((tduration-these_srs["durations"].values[closest_index])/tduration) <= duration_rel_precision_threshold:

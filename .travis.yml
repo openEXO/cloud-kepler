@@ -20,4 +20,6 @@ install:
 script:
   - cd python
   - make
-  - python -m unittests.test_bls_pulse
+  - python -m unittests.test_bls_pulse_python
+  - python -m unittests.test_bls_pulse_vec
+  - python -m unittests.test_bls_pulse_cython
