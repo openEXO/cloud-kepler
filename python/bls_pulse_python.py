@@ -243,7 +243,6 @@ direction=0, print_format='none', verbose=False):
     # Return each segment's best transit event.  Create a pandas data frame based on the
     # array of srMax and transit parameters.  The index of the pandas array will be the
     # segment number.
-    raise ValueError
     return_data = pd.DataFrame({ "srMaxVals": srMax, "durations": transitDuration,
         "depths":transitDepth, "midtimes":transitMidTime},
         index=pd.Index(range(len(segments))))
