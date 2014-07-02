@@ -99,7 +99,7 @@ int do_bls_pulse_segment(double *time, double *flux, double *fluxerr, double *sa
             d = extreme(d, flux[k]);
         }
         
-        for (j = min(i + nbins_min_dur, nbins); j < min(i + nbins_max_dur, nbins); j++)
+        for (j = min(i + nbins_min_dur, nbins); j < min(i + nbins_max_dur + 1, nbins); j++)
         {
             /* i and j will always be valid values for i1, i2 as defined in the algorithm
              * of Kovacs, Zucker, & Mazeh (2002). */

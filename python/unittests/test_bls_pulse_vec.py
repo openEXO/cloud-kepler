@@ -1,26 +1,16 @@
 #!/usr/bin/env python
 
-############################################################################################
-## Place import commands and logging options.
-############################################################################################
 import sys
 import logging
 import random
 import math
-import base64
-from zlib import compress
-import cStringIO
+import numpy as np
 import simulate.bls_vec_simulator as bls_vec_simulator
 from bls_pulse_vec import bls_pulse_vec
 from argparse import ArgumentParser
 
-import numpy as np
-import matplotlib.pyplot as matplot
-import matplotlib.transforms
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-############################################################################################
 
 
 def is_straddling(tmid, tdur, segsize, lc):
@@ -52,7 +42,7 @@ def is_straddling(tmid, tdur, segsize, lc):
 ############################################################################################
 ## This is the main routine.
 ############################################################################################
-def main(err_on_fail=True, allow_straddling=True):
+def main(err_on_fail=True, allow_straddling=True, ofile=None):
 
     ## Generate repeatable, random tranist parameters selected from a uniform distribution for testing purposes.
 
@@ -98,6 +88,7 @@ def main(err_on_fail=True, allow_straddling=True):
 
     ## Start the random seed variable so the random sampling is repeatable.
     random.seed(4)
+    np.random.seed(4)
 
     ## Create random distribution of periods, depths, and durations.
     starid_list = [str(x+1).zfill(2) for x in range(n_lcs)]
@@ -140,8 +131,14 @@ def main(err_on_fail=True, allow_straddling=True):
                 if err_on_fail:
                     sys.exit(1)
             else:
-                ## Test pass/fail criteria using the closest segment event.
-                if abs(ttime-these_srs["midtimes"].values[closest_index]) <= midtime_precision_threshold and abs(tdepth-these_srs["depths"].values[closest_index])/tdepth <= depth_rel_precision_threshold and abs(tduration-these_srs["durations"].values[closest_index])/tduration <= duration_rel_precision_threshold:
+                if ofile:
+                    ofile.write('%d\t%f\t%f\t%f\n' % (tnum,
+                        these_srs['midtimes'].values[closest_index],
+                        these_srs['depths'].values[closest_index],
+                        these_srs['durations'].values[closest_index]))
+
+                    ## Test pass/fail criteria using the closest segment event.
+                if abs(ttime-these_srs["midtimes"].values[closest_index]) <= midtime_precision_threshold and abs((tdepth-these_srs["depths"].values[closest_index])/tdepth) <= depth_rel_precision_threshold and abs((tduration-these_srs["durations"].values[closest_index])/tduration) <= duration_rel_precision_threshold:
                     print "   Transit {0: <3d}.....PASS".format(tnum)
                 elif allow_straddling and is_straddling(ttime, tduration / 24., segment_size,
                 this_lc['lc']):
@@ -173,12 +170,22 @@ if __name__ == "__main__":
         dest='err', type=int)
     parser.add_argument('-s', help='Allow straddling transits to pass?', default=1,
         dest='straddling', type=int)
+    parser.add_argument('-o', help='Specify an output file', default=None,
+        dest='ofile', type=str)
     args = parser.parse_args()
 
     print 'Errors on fail:', bool(args.err)
     print 'Allow straddling to pass:', bool(args.straddling)
     print
 
-    main(err_on_fail=args.err, allow_straddling=args.straddling)
+    if args.ofile:
+        f = open(args.ofile, 'w')
+    else:
+        f = None
+
+    main(err_on_fail=args.err, allow_straddling=args.straddling, ofile=f)
+
+    if f:
+        f.close()
 
 ############################################################################################
