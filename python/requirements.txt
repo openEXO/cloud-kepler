@@ -3,4 +3,5 @@ ipdb
 scipy
 matplotlib
 cython
+pyfits
 
