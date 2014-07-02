@@ -4,15 +4,24 @@
 ## Place import commands and logging options.
 ############################################################################################
 import sys
+import logging
 import random
 import math
+import base64
+import json
+from zlib import compress
+import cStringIO
 import simulate.bls_vec_simulator as bls_vec_simulator
-from bls_pulse import bls_pulse_main
+from bls_pulse_python import bls_pulse_main
 from argparse import ArgumentParser
 
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as matplot
+import matplotlib.transforms
+import ipdb
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 ############################################################################################
 
 
@@ -53,7 +62,7 @@ def main(err_on_fail=True, allow_straddling=True, ofile=None):
     minute_in_days = 1. / (60. * 24.)
 
     ## --- The following parameters are for the bls_pulse input ---
-    ## What do you want to use for a segment size in the bls_pulse_vec algorithm?
+    ## What do you want to use for a segment size in the bls_pulse algorithm?
     segment_size = 2 ## in days.
     min_duration = 0.01 ## in days.
     max_duration = 0.5 ## in days.
@@ -119,22 +128,15 @@ def main(err_on_fail=True, allow_straddling=True, ofile=None):
         print "TEST_BLS_PULSE: Test case # " + str(i) + "/" + str(n_lcs) + "..."
         this_lc = bls_vec_simulator.bls_vec_simulator(p, dr, d, ph, signal_to_noise, n_samples, baseline)
 
-        # Re-package the output into the format expected by the Cython implementation.
+        ## Create a list of lists (a list of [time,flux,fluxerr]) to encode and pass onto bls_pulse.
+        this_lc_listoflists = [[x,y,z] for x,y,z in zip(this_lc['lc'].index,this_lc['lc'].flux,this_lc['lc'].flux_error)]
+
+        ## Run the lightcurve through bls_pulse.
         time = np.array(this_lc['lc'].index.values, dtype='float64')
-        flux = np.array(this_lc['lc'].flux, dtype='float64')
-        fluxerr = np.array(this_lc['lc'].flux_error, dtype='float64')
-
-        ## Run the lightcurve through bls_pulse_vec.
-        srsq, duration, depth, midtime = bls_pulse_main(time, flux, fluxerr, n_bins_blspulse,
-            segment_size, min_duration, max_duration, detrend_order=-1)
-
-        # Re-package the output into the format expected by this module.
-        ndx = np.argmax(srsq, axis=1)
-        ind = np.indices(ndx.shape)
-        durations = duration[ind,ndx][0] * 24.
-        depths = depth[ind,ndx][0]
-        midtimes = midtime[ind,ndx][0]
-        these_srs = pd.Series(dict(durations=durations, depths=depths, midtimes=midtimes))
+        flux = np.array(this_lc['lc'].flux.values, dtype='float64')
+        fluxerr = np.array(this_lc['lc'].flux_error)
+        these_srs = bls_pulse_main(time, flux, fluxerr, n_bins_blspulse, segment_size,
+            min_duration, max_duration, direction=0, print_format='none')
 
         ## Compare to see if each of the simulated transits is found by BLS_PULSE.
         for tnum,ttime,tdepth,tduration in zip(range(len(this_lc['transit_times'])), this_lc['transit_times'], this_lc['transit_depths'], this_lc['transit_durations']):
@@ -157,7 +159,7 @@ def main(err_on_fail=True, allow_straddling=True, ofile=None):
                 ## Test pass/fail criteria using the closest segment event.
                 if abs(ttime-these_srs["midtimes"].values[closest_index]) <= midtime_precision_threshold and abs((tdepth-these_srs["depths"].values[closest_index])/tdepth) <= depth_rel_precision_threshold and abs((tduration-these_srs["durations"].values[closest_index])/tduration) <= duration_rel_precision_threshold:
                     print "   Transit {0: <3d}.....PASS".format(tnum)
-                elif allow_straddling and is_straddling(ttime, tduration / 24., segment_size,
+                elif allow_straddling and is_straddling(ttime, tduration, segment_size,
                 this_lc['lc']):
                     print "   Transit {0: <3d}.....PASS (straddling)".format(tnum)
                 else:
@@ -179,6 +181,9 @@ def main(err_on_fail=True, allow_straddling=True, ofile=None):
                         sys.exit(1)
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    logger.setLevel(logging.INFO)
+
     parser = ArgumentParser()
     parser.add_argument('-e', help='Throw an error if a test fails?', default=1,
         dest='err', type=int)
@@ -201,5 +206,4 @@ if __name__ == "__main__":
 
     if f:
         f.close()
-
 ############################################################################################

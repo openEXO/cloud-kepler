@@ -194,5 +194,5 @@ np.ndarray[double, ndim=1, mode='c'] depth, np.ndarray[double, ndim=1, mode='c']
 
     # Undo the flux correction.
     flux += c
-    depth[:] = 1. - (depth[:] + c)    # NOTE: This assumes flux is normalized to 1!
+    depth += c
 
