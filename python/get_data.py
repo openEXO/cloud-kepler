@@ -17,37 +17,54 @@ import pyfits
 import numpy as np
 from contextlib import contextmanager
 from argparse import ArgumentParser
-from common import encode_array
+from utils import encode_array
 
 
 ############################################################################################
 # Define the possible timestamps in the filename for a given Quarter as a global constant.
 # This allows the software to determine what Quarter a given file came from without having
 # to read the FITS header (since these timestamps are in the file name).
-# NOTE:  Have to add Q17 timestamp here.
-# NOTE:  There are two possible quarter prefixes for Quarter 4 data files.  The more common
-# one is put first so that it is checked before the rarer one.
-# NOTE:  This list assumes long-cadence data ONLY.
 ############################################################################################
-QUARTER_PREFIXES = {'0':  "2009131105131",
-                    '1':  "2009166043257",
-                    '2':  "2009259160929",
-                    '3':  "2009350155506",
-                    '4a':  "2010078095331",
-                    '4b':  "2010009091648",
-                    '5':  "2010174085026",
-                    '6':  "2010265121752",
-                    '7':  "2010355172524",
-                    '8':  "2011073133259",
-                    '9':  "2011177032512",
-                    '10': "2011271113734",
-                    '11': "2012004120508",
-                    '12': "2012088054726",
-                    '13': "2012179063303",
-                    '14': "2012277125453",
-                    '15': "2013011073258",
-                    '16': "2013098041711",
-                    '17': "2013131215648"}
+NUM_QUARTERS = 17
+
+LONG_QUARTER_PREFIXES = {'0':['2009131105131'],
+                         '1':['2009166043257'],
+                         '2':['2009259160929'],
+                         '3':['2009350155506'],
+                         '4':['2010078095331','2010009091648'],
+                         '5':['2010174085026'],
+                         '6':['2010265121752'],
+                         '7':['2010355172524'],
+                         '8':['2011073133259'],
+                         '9':['2011177032512'],
+                         '10':['2011271113734'],
+                         '11':['2012004120508'],
+                         '12':['2012088054726'],
+                         '13':['2012179063303'],
+                         '14':['2012277125453'],
+                         '15':['2013011073258'],
+                         '16':['2013098041711'],
+                         '17':['2013131215648']}
+
+SHORT_QUARTER_PREFIXES = {'0':['2009131110544'],
+                          '1':['2009166044711'],
+                          '2':['2009201121230','2009231120729','2009259162342'],
+                          '3':['2009291181958','2009322144938','2009350160919'],
+                          '4':['2010009094841','2010019161129','2010049094358','2010078100744'],
+                          '5':['2010111051353','2010140023957','2010174090439'],
+                          '6':['2010203174610','2010234115140','2010265121752'],
+                          '7':['2010296114515','2010326094124','2010355172524'],
+                          '8':['2011024051157','2011053090032','2011073133259'],
+                          '9':['2011116030358','2011145075126','2011177032512'],
+                          '10':['2011208035123','2011240104155','2011271113734'],
+                          '11':['2011303113607','2011334093404','2012004120508'],
+                          '12':['2012032013838','2012060035710','2012088054726'],
+                          '13':['2012121044856','2012151031540','2012179063303'],
+                          '14':['2012211050319','2012242122129','2012277125453'],
+                          '15':['2012310112549','2012341132017','2013011073258'],
+                          '16':['2013017113907','2013065031647','2013098041711'],
+                          '17':['2013121191144','2013131215648']}
+############################################################################################
 
 
 class DataStream:
@@ -87,44 +104,31 @@ class DataStream:
 # This function, and its utility functions, retrieves data from the MAST archive over the web.
 ############################################################################################
 def get_data_from_mast(data):
-    for kepler_id, quarter in data:
-        try:
-            # Create variable that will be the key to use in the QUARTER_PREFIXES dictionary.
-            # The backup path is only defined if it's Quarter 4.
-            quarter_key = quarter
-            path_backup = ""
+    for kepler_id, quarter, suffix in data:
+        # Fix kepler_id missing zero-padding
+        if len(kepler_id) < 9:
+            kepler_id = str("%09d" % int(kepler_id))
 
-            # Special handling required since there are two Quarter 4 timestamps possible.
-            # First start off with Quarter 4a.
-            if quarter == '4':
-                quarter_key = '4a'
+        # Now create the URLs.
+        path = get_mast_path(kepler_id, quarter, suffix)
 
-            # Fix kepler_id missing zero-padding
-            if len(kepler_id) < 9:
-                kepler_id = str("%09d" % int(kepler_id))
-
-            # Now create the URL regardless of Quarter.
-            path = get_mast_path(kepler_id, quarter_key)
-
-            # If Quarter 4, prepare a "backup" path of the second possible epoch in Quarter 4.
-            if quarter == '4':
-                quarter_key = '4b'
-                path_backup = prepare_path(kepler_id, quarter_key)
-
+        for p in path:
             # Download the requested URL.
-            fits_stream = download_file_serialize(path, path_backup)
-            tempfile, stream = process_fits_object(fits_stream)
+            try:
+                fits_stream = download_file_serialize(p)
+                tempfile, stream = process_fits_object(fits_stream)
+            except RuntimeError:
+                logging.error('Cannot download: ' + p)
+                continue
 
             # Write the result to STDOUT as this will be an input to a
             # reducer that aggregates the querters together
-            print "\t".join([kepler_id, quarter, path, stream.dstream1, stream.dstream2,
+            print "\t".join([kepler_id, quarter, p, stream.dstream1, stream.dstream2,
                 stream.dstream3])
             os.unlink(tempfile)
-        except:
-            pass
 
 
-def download_file_serialize(uri, uri_backup):
+def download_file_serialize(uri):
     '''
     Downloads the FITS file at the given URI; if that fails, attempts to download the
     file from the backup URI. On success, returns a raw character stream. On failure,
@@ -134,28 +138,28 @@ def download_file_serialize(uri, uri_backup):
         response = urllib2.urlopen(uri)
         fits_stream = response.read()
     except:
-        # If the first uri failed, try the backup uri.
-        if uri_backup != "":
-            try:
-                response = urllib2.urlopen(uri_backup)
-                fits_stream = response.read()
-            except:
-                logging.error("Cannot download: " + uri + " or " + uri_backup)
-                fits_stream = ""
-        else:
-            logging.error("Cannot download: "+ uri)
-            fits_stream = ""
+        raise RuntimeError
 
     return fits_stream
 
 
-def get_mast_path(kepler_id, quarter):
+def get_mast_path(kepler_id, quarter, suffix):
     '''
     Construct download path from MAST, given the Kepler ID and quarter.
     '''
     prefix = kepler_id[0:4]
-    path = "http://archive.stsci.edu/pub/kepler/lightcurves/" + prefix + "/" + kepler_id + \
-        "/kplr" + kepler_id + "-" + QUARTER_PREFIXES[quarter] + "_llc.fits"
+    path = []
+
+    if suffix == 'llc':
+        for p in LONG_QUARTER_PREFIXES[quarter]:
+            path.append('http://archive.stsci.edu/pub/kepler/lightcurves/' + prefix + '/' + \
+                kepler_id + '/kplr' + kepler_id + '-' + p + '_' + suffix + '.fits')
+    elif suffix == 'slc':
+        for p in SHORT_QUARTER_PREFIXES[quarter]:
+            path.append('http://archive.stsci.edu/pub/kepler/lightcurves/' + prefix + '/' + \
+                kepler_id + '/kplr' + kepler_id + '-' + p + '_' + suffix + '.fits')
+    else:
+        raise ValueError('Invalid cadence key: %s' % suffix)
 
     return path
 
@@ -189,9 +193,9 @@ def process_fits_object(fits_string):
 
 @contextmanager
 def tempinput(data):
-    """
+    '''
     Handle old legacy code that absolutely demands a filename instead of streaming file content.
-    """
+    '''
     temp = tempfile.NamedTemporaryFile(delete=False)
     temp.write(data)
     temp.close()
@@ -205,71 +209,57 @@ def tempinput(data):
 # format: <root directory>/<4-digit short KepID>/<full KepID>/
 ############################################################################################
 def get_data_from_disk(data, datapath):
-    for kepler_id, quarter in data:
-        try:
-            # Create variable that will be the key to use in the QUARTER_PREFIXES dictionary.
-            # The backup path is only defined if it's Quarter 4.
-            quarter_key = quarter
-            path_backup = ""
+    for kepler_id, quarter, suffix in data:
+        # Fix kepler_id missing zero-padding
+        if len(kepler_id) < 9:
+            kepler_id = str("%09d" % int(kepler_id))
 
-            # Special handling required since there are two Quarter 4 timestamps possible.
-            # First start off with Quarter 4a.
-            if quarter == '4':
-                quarter_key = '4a'
+        # Now create the URL regardless of Quarter.
+        path = get_fits_path(datapath, kepler_id, quarter, suffix)
 
-            # Fix kepler_id missing zero-padding
-            if len(kepler_id) < 9:
-                kepler_id = str("%09d" % int(kepler_id))
-
-            # Now create the URL regardless of Quarter.
-            path = get_fits_path(datapath, kepler_id, quarter_key)
-
-            # If Quarter 4, prepare a "backup" path of the second possible epoch in Quarter 4.
-            if quarter == '4':
-                quarter_key = '4b'
-                path_backup = get_fits_path(datapath, kepler_id, quarter_key)
-
+        for p in path:
             # Read in the FITS file and create the DataStream object.
-            stream = read_fits_file(path, kepler_id, path_backup)
+            try:
+                stream = read_fits_file(p, kepler_id)
+            except RuntimeError:
+                logging.error("Cannot read: "+ input_fits_file)
+                continue
 
             # Write the result to STDOUT as this will be an input to a
             # reducer that aggregates the querters together
-            print "\t".join([kepler_id, quarter, path, stream.dstream1, stream.dstream2,
+            print "\t".join([kepler_id, quarter, p, stream.dstream1, stream.dstream2,
                 stream.dstream3])
-        except:
-            pass
 
 
-def get_fits_path(datapath, kepler_id, quarter):
-    "Construct file path on disk, given the base path, Kepler ID, and quarter."
+def get_fits_path(datapath, kepler_id, quarter, suffix):
+    '''
+    Construct file path on disk, given the base path, Kepler ID, and quarter.
+    '''
     prefix = kepler_id[0:4]
-    # Changed to os.path.join for more flexibility with `datapath` syntax
-    path = os.path.join(datapath, prefix, kepler_id, 'kplr' + kepler_id + '-' +
-        QUARTER_PREFIXES[quarter] + '_llc.fits')
+    path = []
+
+    if suffix == 'llc':
+        for p in LONG_QUARTER_PREFIXES[quarter]:
+            path.append(os.path.join(datapath, prefix, kepler_id, 'kplr' + kepler_id + '-' +
+                p + '_' + suffix + '.fits'))
+    elif suffix == 'slc':
+        for p in SHORT_QUARTER_PREFIXES[quarter]:
+            path.append(os.path.join(datapath, prefix, kepler_id, 'kplr' + kepler_id + '-' +
+                p + '_' + suffix + '.fits'))
+    else:
+        raise ValueError('Invalid cadence key: %s' % suffix)
 
     return path
 
 
-def read_fits_file(input_fits_file, kepler_id, input_fits_file_backup):
-    """"
+def read_fits_file(input_fits_file, kepler_id):
+    '''
     Read FITS file from disk for each quarter and each object into memory.
-    """
+    '''
     try:
         hdulist = pyfits.open(input_fits_file)
     except:
-         # If the first file path failed (usually because there are alternative timestamps in
-         # the file names), try the backup file name.
-        if input_fits_file_backup != "":
-            try:
-                hdulist = pyfits.open(input_fits_file_backup)
-            except:
-                logging.error("Cannot read: " + input_fits_file + " or " + input_fits_file_backup)
-                # Return an empty DataStream object in this case...
-                return DataStream()
-        else:
-            logging.error("Cannot read: "+ input_fits_file)
-            # Return an empty DataStream object in this case...
-            return DataStream()
+        raise RuntimeError
 
     # Otherwise we've successfully opened the FITS file, so read the data, close the FITS
     # file, and create the DataStream object.
@@ -312,7 +302,7 @@ def main(source,datapath):
     elif source == "disk":
         get_data_from_disk(data,datapath)
     else:
-        raise GetDataError("Invalid choice for source parameter.")
+        raise ValueError("Invalid choice for source parameter.")
 
 
 def read_input(file):
@@ -321,8 +311,12 @@ def read_input(file):
         s = line.split()
 
         # Only yield if this was a valid line (allows for blank lines in STDIN)
-        if len(s) == 2:
-            yield s
+        if len(s) == 3:
+            if s[1] == '*':
+                for i in xrange(NUM_QUARTERS):
+                    yield [s[0], str(i), s[2]]
+            else:
+                yield s
 ############################################################################################
 
 if __name__ == "__main__":
