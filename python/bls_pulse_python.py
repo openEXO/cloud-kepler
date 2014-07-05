@@ -185,11 +185,6 @@ direction=0, detrend_order=0):
     # NOTE: "sr" is the Signal Residue as defined in the original BLS paper by
     # Kovacs et al. (2002), A&A, 391, 377.
     for jj,seg,flux_seg in zip(range(len(segments)),segments,flux_segments):
-        # Print progress information to screen, if verbose is set.
-        if verbose:
-            txt = 'KIC' + kic_id + ' | Segment  ' +  str(jj+1) + ' out of ' + str(len(segments))
-            logger.info(txt)
-
         # Default this segment's output values to NaN.  If a valid SR_Max is found, these will
         # be updated with finite values.
         srMax = np.append(srMax, np.nan)
