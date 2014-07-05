@@ -2,12 +2,17 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import numpy as np
 import cProfile
+import logging
+import numpy as np
 from common import read_mapper_output
 from bls_pulse import bls_pulse_main
 from argparse import ArgumentParser
 from configparser import SafeConfigParser, NoOptionError
+
+# Basic logging configuration.
+logger = logging.getLogger(__main__)
+logger.setLevel(logging.DEBUG)
 
 
 def __init_parser(defaults):

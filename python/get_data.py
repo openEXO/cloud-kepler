@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 '''
 Kepler FITS retrieval.  This module will retrieve Kepler lightcurve FITS files based on
@@ -18,6 +19,10 @@ import numpy as np
 from contextlib import contextmanager
 from argparse import ArgumentParser
 from utils import encode_array
+
+# Basic logging configuration.
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 ############################################################################################
@@ -320,6 +325,7 @@ def read_input(file):
 ############################################################################################
 
 if __name__ == "__main__":
+    # Set up the command line argument parser.
     parser = ArgumentParser(description="Retrieve Kepler lightcurve data given a set of Kepler "
         "IDs and Quarter numbers from STDIN.")
     parser.add_argument("source", action="store", choices=['mast','disk'],

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 '''
 BLS_PULSE algorithm, based on bls_pulse.pro originally written by Peter McCullough.
 '''

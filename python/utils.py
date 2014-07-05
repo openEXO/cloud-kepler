@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 '''
 This module contains functions that are common to several other modules in this
 directory.
@@ -9,18 +11,22 @@ import zlib
 import numpy as np
 
 
-def read_mapper_output(f, separator='\t'):
+def read_mapper_output(f, separator='\t', uri=False):
     '''
     Reads data from the input file, assuming the given separator, in base64 format;
     yields the decoded and split line. The format is kic_id, quarter, time, flux, error
     for each line.
     '''
     for line in f:
-        kic, quarters, t, f, e = line.rstrip().split(separator)
-        time = json.loads(zlib.decompress(base64.b64decode(t)))
-        flux = json.loads(zlib.decompress(base64.b64decode(f)))
-        fluxerr = json.loads(zlib.decompress(base64.b64decode(e)))
-        yield kic, quarters, time, flux, fluxerr
+        if uri:
+            kic, q, uri, t, f, e = line.rstrip().split(separator)
+        else:
+            kic, q, t, f, e = line.rstrip().split(separator)
+
+        time = decode_array(t)
+        flux = decode_array(f)
+        fluxerr = decode_array(e)
+        yield kic, q, time, flux, fluxerr
 
 
 def encode_array(arr):
