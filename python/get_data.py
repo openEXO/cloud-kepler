@@ -227,7 +227,7 @@ def get_data_from_disk(data, datapath):
             try:
                 stream = read_fits_file(p, kepler_id)
             except RuntimeError:
-                logging.error("Cannot read: "+ input_fits_file)
+                logging.error("Cannot read: " + p)
                 continue
 
             # Write the result to STDOUT as this will be an input to a

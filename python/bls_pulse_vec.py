@@ -91,7 +91,7 @@ def __phase_bin(segment, bins):
 
 
 def bls_pulse(time, flux, fluxerr, n_bins, segment_size, min_duration, max_duration,
-detrend_order=0, direction=0, remove_nan_segs=False):
+detrend_order=3, direction=0, remove_nan_segs=False):
     '''
     Main function for this module; performs the BLS pulse algorithm on the input
     lightcurve data, in a vectorized way. Lightcurve should be 0-based if no

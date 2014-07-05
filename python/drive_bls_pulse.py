@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import pstats
 import cProfile
 import logging
 import numpy as np
@@ -44,6 +45,9 @@ def __init_parser(defaults):
     parser.add_argument('--direction', action='store', type=int, dest='direction',
         default=bool(defaults['direction']), help='[Optional] Direction of box wave to '
         'look for. 1 = blip (top-hat), -1 = dip (drop), 0 = most significant, 2 = both.')
+    parser.add_argument('--mode', action='store', type=str, dest='mode',
+        default=defaults['mode'], help='[Optional] Implementation to use; python, '
+        'vec, or cython.')
     parser.add_argument('-f', '--printformat', action='store', type=str, dest='fmt',
         default=defaults['print_format'], help='[Optional] Format of string printed to '
         'screen. Options are \'encoded\' (base-64 binary) or \'normal\' (human-readable '
@@ -94,7 +98,7 @@ def main():
     # This is a global list of default values that will be used by the argument parser
     # and the configuration parser.
     defaults = {'min_duration':'0.0416667', 'max_duration':'0.5', 'n_bins':'100',
-        'direction':'0', 'print_format':'encoded', 'verbose':'0', 'profiling':'0'}
+        'direction':'0', 'mode':'vec', 'print_format':'encoded', 'verbose':'0', 'profiling':'0'}
 
     # Set up the parser for command line arguments and read them.
     parser = __init_parser(defaults)
@@ -110,6 +114,7 @@ def main():
         maxdur = args.maxdur
         nbins = args.nbins
         direction = args.direction
+        mode = args.mode
         fmt = args.fmt
         verbose = args.verbose
         profile = args.profile
@@ -123,6 +128,7 @@ def main():
         maxdur = cp.getfloat('DEFAULT', 'max_duration')
         nbins = cp.getint('DEFAULT', 'n_bins')
         direction = cp.getint('DEFAULT', 'direction')
+        mode = cp.get('DEFAULT', 'mode')
         fmt = cp.get('DEFAULT', 'print_format')
         verbose = cp.getboolean('DEFAULT', 'verbose')
         profile = cp.getboolean('DEFAULT', 'profiling')
@@ -142,13 +148,28 @@ def main():
             pr = cProfile.Profile()
             pr.enable()
 
-        srsq, duration, depth, midtime = bls_pulse_main(time, flux, fluxerr, nbins,
-            segment, mindur, maxdur)
+        if mode == 'python':
+            out = bls_pulse_python(time, flux, fluxerr, nbins, segment, mindur, maxdur,
+                direction=direction)
+        elif mode == 'vec':
+            out = bls_pulse_vec(time, flux, fluxerr, nbins, segment, mindur, maxdur,
+                direction=direction)
+        elif mode == 'cython':
+            out = bls_pulse_cython(time, flux, fluxerr, nbins, segment, mindur, maxdur,
+                direction=direction)
+        else:
+            raise ValueError('Invalid mode: %s' % mode)
+
+        srsq = out['srsq']
+        duration = out['duration']
+        depth = out['depth']
+        midtime = out['midtime']
 
         if profile:
             # Turn off profiling.
             pr.disable()
-            pr.print_stats()
+            ps = pstats.Stats(pr, stream=sys.stderr).sort_stats('time')
+            ps.print_stats()
 
         # Print output.
         if fmt == 'encoded':
@@ -156,11 +177,11 @@ def main():
                 encode_array(depth), encode_array(midtime)])
         elif fmt == 'normal':
             print "-" * 80
-            print "Kepler " + kic_id
-            print "Quarters: " + quarters
+            print "Kepler " + k
+            print "Quarters: " + q
             print "-" * 80
             print '{0: <7s} {1: <13s} {2: <10s} {3: <9s} {4: <13s}'.format('Segment',
-                'srSquaredMax', 'Duration', 'Depth', 'Midtime')
+                'SR^2', 'Duration', 'Depth', 'Midtime')
             for i in xrange(len(srsq)):
                 print '{0: <7d} {1: <13.6f} {2: <10.6f} {3: <9.6f} {4: <13.6f}'.format(i,
                     srsq[i], duration[i], depth[i], midtime[i])

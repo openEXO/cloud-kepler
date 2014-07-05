@@ -1,6 +1,8 @@
 #include <math.h>
 #include <stdio.h>
 
+#define true            (1)
+
 #define min(a,b)        (a < b ? a : b)
 #define max(a,b)        (a > b ? a : b)
 
@@ -31,8 +33,17 @@ int do_bin_segment(double *time, double *flux, double *fluxerr, int nbins,
     /* We keep track of the time index, bin index, and number of points in this bin. */
     int i = *ndx, j;
 
-    while ((time[i] < end) && (i < nsamples))
+    while (true)
     {
+        if (isnan(flux[i]))
+        {
+            i++;
+            continue;
+        }
+
+        if ((time[i] >= end) || (i >= nsamples))
+            break;
+
         j = (int) floor((time[i] - start) / binsize);
 
         /* We're just adding here; we'll divide by the count number at the end. */

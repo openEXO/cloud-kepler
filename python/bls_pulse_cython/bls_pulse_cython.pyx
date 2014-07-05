@@ -71,6 +71,7 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, di
         if detrend_order != 0:
             coeffs = polyfit.polyfit(stime[ndx], sflux[ndx], sfluxerr[ndx], detrend_order)
             sflux /= poly.polyval(stime, coeffs)
+            sflux -= 1.
 
         # Call the algorithm.
         __bls_pulse_binned(stime, sflux, sfluxerr, samples, segsize, mindur, maxdur, 
@@ -79,8 +80,8 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, di
     ndx = np.argmax(srsq, axis=1)
     ind = np.indices(ndx.shape)
 
-    return dict(srsq=srsq[ind,ndx], duration=duration[ind,ndx], depth=depth[ind,ndx], 
-        midtime=midtime[ind,ndx])
+    return dict(srsq=srsq[ind,ndx].ravel(), duration=duration[ind,ndx].ravel(), 
+        depth=depth[ind,ndx].ravel(), midtime=midtime[ind,ndx].ravel())
 
 
 @cython.boundscheck(False)
@@ -91,7 +92,7 @@ np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] 
     # TODO: Sort by time if it isn't already?
     
     # The phase-binning assumes a zero-based time index.
-    time -= time[0]
+    time -= np.nanmin(time)
 
 
 @cython.boundscheck(False)

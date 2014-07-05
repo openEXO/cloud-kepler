@@ -14,6 +14,7 @@ Contents:
    :maxdepth: 2
 
    setup
+   data
    bls_pulse
    detrend
    postprocessing
