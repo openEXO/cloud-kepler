@@ -21,6 +21,6 @@ install:
 script:
   - cd python
   - make
-  - python -m unittests.test_bls_pulse_python
-  - python -m unittests.test_bls_pulse_vec
-  - python -m unittests.test_bls_pulse_cython
+  - python -m unittests.test_bls_pulse --mode python
+  - python -m unittests.test_bls_pulse --mode vec
+  - python -m unittests.test_bls_pulse --mode cython
