@@ -20,6 +20,7 @@ Test that the basic python code is working::
 
 If it starts downloading and spewing base64 encoded numpy arrays, then you're good. 
 
+
 Hadoop setup
 ============
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-BLS_PULSE algorithm, based on bls_pulse.pro originally written by Peter McCullough.
+BLS_PULSE algorithm, based on ``bls_pulse.pro`` originally written by Peter McCullough.
 '''
 
 import logging
@@ -12,15 +12,21 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def convert_duration_to_bins(duration_days, nbins, segment_size, duration_type):
+def __convert_duration_to_bins(duration_days, nbins, segment_size, duration_type):
     '''
-    Convert the requested duration (in days) to a duration in (full) units of bins. I round
-    down for min and round up for max, but I am not 100% that's what we want to necessarily
-    be doing here.  Either way, I preferred being consistent than relying on pure rounding
-    like it was done previously.
+    Converts the requested duration (in days) to a duration in (full) units of bins. Rounds
+    down for min and round up for max.
 
-    Set type="min" if <duration_days> is a minimum duration, or set type="max" if it's a
-    maximum duration.
+    :param duration_days: Duration to convert in days
+    :type duration_days: float
+    :param nbins: Number of bins in a segment
+    :type nbins: int
+    :param segment_size: Size of a segment in days
+    :type segment_size: float
+    :param duration_type: Type of duration to calculate. Valid values are `min` and `max`
+    :type duration_type: str
+
+    :rtype: float
     '''
     if duration_type == 'min':
         # This was the way it was calculated originally.
@@ -34,15 +40,35 @@ def convert_duration_to_bins(duration_days, nbins, segment_size, duration_type):
         duration_bins = max(1,min(int(np.ceil(duration_days*nbins/segment_size)), nbins))
     else:
         # Note (SWF): Need to add proper error handler here.
-        duration_bins = 0
+        raise ValueError('Invliad duration type: %s' % duration_type)
 
     return duration_bins
 
 
-def calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, trial_segment, binTime, binFlx, ppb,
-this_seg, lc_samplerate):
+def __calc_sr_max(n, nbins, mindur, maxdur, direction, binTime, binFlx, ppb):
     '''
-    Convert the requested duration (in days) to a duration in units of bins.
+    Calculates the maximum signal residual for a given segment.
+
+    :param n: Total number of points that were binned to this segment
+    :type n: int
+    :param nbins: Number of bins in each segment
+    :type nbins: int
+    :param mindur: Minimum signal duration to accept, in units of bins
+    :type mindur: int
+    :param maxdur: Maximum signal duration to accept, in units of bins
+    :type maxdur: int
+    :param direction: Signal direction to accept; -1 for dips, +1 for blips, or 0
+        for best
+    :type direction: int
+    :param binTime: Array of binned times
+    :type binTime: numpy.ndarray
+    :param binFlx: Array of binned fluxes
+    :type binFlx: numpy.ndarray
+    :param ppb: Weights for each bin; each weight is the number of points that were
+        binned to the corresponding bin
+    :type ppb: numpy.ndarray
+
+    :rtype: tuple
     '''
     # Note (SWF):  I want to double check the math here matches what is done in
     # Kovacs et al. (2002).  On the TO-DO list...
@@ -63,7 +89,7 @@ this_seg, lc_samplerate):
             s += binFlx[i2]
             r += ppb[i2]
 
-            if i2 - i1 >= mindur and r >= r_min and direction*s >= 0 and r < n:
+            if i2 - i1 >= mindur and direction*s >= 0 and r < n:
                 sr = s**2 / (r * (n - r))
 
                 if sr > best_SR or np.isnan(best_SR):
@@ -85,7 +111,35 @@ this_seg, lc_samplerate):
 
 
 def bls_pulse(time, flux, fluxerr, n_bins, segment_size, min_duration, max_duration,
-direction=0, print_format='none', verbose=False, detrend_order=0):
+direction=0, detrend_order=0):
+    '''
+    Main function for this module; performs the BLS pulse algorithm on the input
+    lightcurve data. Lightcurve should be 0-based if no detrending is used.
+
+    See Kovacs et al. (2002)
+
+    :param time: Array of times of observations; nominally in units of days
+    :type time: numpy.ndarray
+    :param flux: Array of fluxes corresponding to times
+    :type flux: numpy.ndarray
+    :param fluxerr: Array of flux errors corresponding to times
+    :type fluxerr: numpy.ndarray
+    :param n_bins: Number of bins in each segment
+    :type n_bins: int
+    :param segment_size: Length of a segment, in days
+    :type segment_size: float
+    :param min_duration: Minimum signal duration to accept, in days
+    :type min_duration: float
+    :param max_duration: Maximum signal duration to accept, in days
+    :type max_duration: float
+    :param direction: Signal direction to accept; -1 for dips, +1 for blips, or 0
+        for best
+    :type direction: int
+    :param detrend_order: Order of detrending to use on input; 0 for no detrending
+    :type detrend_order: int
+
+    :rtype: dict
+    '''
     # The number of bins can sometimes change, so make a working copy so that the original
     # value is still available.
     nbins = n_bins
@@ -94,8 +148,8 @@ direction=0, print_format='none', verbose=False, detrend_order=0):
     lightcurve_timebaseline = time[-1] - time[0]
 
     # Convert the min and max transit durations to units of bins from units of days.
-    mindur = convert_duration_to_bins(min_duration, nbins, segment_size, duration_type="min")
-    maxdur = convert_duration_to_bins(max_duration, nbins, segment_size, duration_type="max")
+    mindur = __convert_duration_to_bins(min_duration, nbins, segment_size, duration_type="min")
+    maxdur = __convert_duration_to_bins(max_duration, nbins, segment_size, duration_type="max")
 
     # Extract lightcurve information and mold it into numpy arrays.
     # First identify which elements are not finite and remove them.
@@ -103,27 +157,7 @@ direction=0, print_format='none', verbose=False, detrend_order=0):
     time = time[ndx]
     flux = flux[ndx]
 
-    # Define the minimum "r" value.  Note that "r" is the sum of the weights on flux at
-    # full depth.
-    # NOTE:  The sample rate of Kepler long-cadence data is (within a second) 0.02044 days.
-    # Rather than hard-code this, we determine the sample rate from the input lightcurve as
-    # just the median value of the difference between adjacent observations.  Assuming the
-    # input lightcurve has enough points, then this will effectively avoid issues caused by
-    # gaps in the lightcurve, since we assume that *most* of the data points in the lightcurve
-    # array will be taken at the nominal sampling.  We also do this so that, if we are sending
-    # simulated data at a different cadence than the Kepler long-cadence, then we don't have
-    # to add conditionals to the code.
-    lc_samplerate = np.median(np.diff(time))
-
-    # The min. r value to consider is either the typical number of Kepler data points expected
-    # in a signal that is min_duration long, or a single data point, whichever is larger.
-    r_min = int(np.ceil(min_duration / lc_samplerate))
-
     # Divide the input time and flux arrays into segments.
-    #seg_stepsize = int(round(segment_size / lc_samplerate))
-    #segments = [(x,time[x:x+seg_stepsize]) for x in xrange(0,len(time),seg_stepsize)]
-    #flux_segments = [(x,flux_minus_mean[x:x+seg_stepsize]) for x in
-    #    xrange(0,len(flux_minus_mean),seg_stepsize)]
     nsegments = int(np.floor((np.amax(time) - np.amin(time)) / segment_size) + 1.)
     segments = [(q,time[(time >= q*segment_size) & (time < (q+1)*segment_size)]) for
         q in xrange(nsegments)]
@@ -174,9 +208,9 @@ direction=0, print_format='none', verbose=False, detrend_order=0):
         nbins = int(n_bins)
         if n < nbins:
             nbins = n
-            mindur = convert_duration_to_bins(min_duration, nbins, segment_size,
+            mindur = __convert_duration_to_bins(min_duration, nbins, segment_size,
                 duration_type="min")
-            maxdur = convert_duration_to_bins(max_duration, nbins, segment_size,
+            maxdur = __convert_duration_to_bins(max_duration, nbins, segment_size,
                 duration_type="max")
 
         # NOTE: Modified by emprice.
@@ -194,8 +228,8 @@ direction=0, print_format='none', verbose=False, detrend_order=0):
 
         # Determine SR_Max.  The return tuple consists of:
         #      (Signal Residue, Signal Duration, Signal Depth, Signal MidTime)
-        sr_tuple = calc_sr_max(n, nbins, mindur, maxdur, r_min, direction, segment_size,
-            binned_times, binned_fluxes, ppb, this_seg, lc_samplerate)
+        sr_tuple = __calc_sr_max(n, nbins, mindur, maxdur, direction, binned_times,
+            binned_fluxes, ppb)
 
         # If the Signal Residue is finite, then we need to add these parameters to our output
         # storage array.
@@ -204,24 +238,6 @@ direction=0, print_format='none', verbose=False, detrend_order=0):
             transitDuration[-1] = sr_tuple[1]
             transitDepth[-1] = sr_tuple[2]
             transitMidTime[-1] = sr_tuple[3]
-
-        # Print output.
-        if print_format == 'encoded':
-            print "\t".join([str(kic_id), encode_array(srMax), encode_array(transitDuration),
-                encode_array(transitDepth), encode_array(transitMidTime)])
-        elif print_format == 'normal':
-            print "-" * 80
-            print "Kepler " + kic_id
-            print "Quarters: " + quarters
-            print "-" * 80
-            print '{0: <7s} {1: <13s} {2: <10s} {3: <9s} {4: <13s}'.format('Segment', 'srMax',
-                'Duration', 'Depth', 'MidTime')
-            for ii, seq in enumerate(segments):
-                print '{0: <7d} {1: <13.6f} {2: <10.6f} {3: <9.6f} {4: <13.6f}'.format(ii,
-                    srMax[ii], transitDuration[ii], transitDepth[ii], transitMidTime[ii])
-            print "-" * 80
-            print
-            print
 
     # Return each segment's best transit event.  Create a pandas data frame based on the
     # array of srMax and transit parameters.  The index of the pandas array will be the

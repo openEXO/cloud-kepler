@@ -6,6 +6,8 @@
 Welcome to cloud-kepler's documentation!
 ========================================
 
+cloud-kepler is a cloud-enabled *Kepler* planet searching pipeline.
+
 Contents:
 
 .. toctree::
@@ -15,5 +17,5 @@ Contents:
    bls_pulse
    detrend
    postprocessing
-
+   utils
 

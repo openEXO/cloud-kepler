@@ -1,11 +1,9 @@
-`detrend` -- A module for detrending lightcurve data
-****************************************************
+``detrend`` -- Detrend lightcurve data
+**************************************
 
 .. automodule:: detrend
 
-`polyfit` -- A Cython polynomial detrender with sigma clipping
-==============================================================
 
-.. automodule:: detrend.polyfit
-    :members:
+``polyfit`` -- Cython polynomial detrender with sigma clipping
+==============================================================
 

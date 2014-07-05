@@ -14,8 +14,17 @@ import numpy as np
 def read_mapper_output(f, separator='\t', uri=False):
     '''
     Reads data from the input file, assuming the given separator, in base64 format;
-    yields the decoded and split line. The format is kic_id, quarter, time, flux, error
-    for each line.
+    yields the decoded and split line. The format is KIC ID, quarter, [uri], time,
+    flux, error for each line.
+
+    :param f: File to read; usually stdin
+    :type f: file
+    :param separator: Sepearator between parts of an entry
+    :type separator: str
+    :param uri: Whether the URI is included on the line
+    :type uri: bool
+
+    :rtype: tuple
     '''
     for line in f:
         if uri:
@@ -31,14 +40,24 @@ def read_mapper_output(f, separator='\t', uri=False):
 
 def encode_array(arr):
     '''
-    base64-encodes the given NumPy array.
+    base64-encodes the given numpy array.
+
+    :param arr: Array to encode
+    :type arr: numpy.ndarray
+
+    :rtype: str
     '''
     return base64.b64encode(zlib.compress(json.dumps(arr.tolist())))
 
 
 def encode_list(lst):
     '''
-    base64-encodes the given NumPy array.
+    base64-encodes the given Python list.
+
+    :param lst: List to encode
+    :type lst: list
+
+    :rtype: str
     '''
     return base64.b64encode(zlib.compress(json.dumps(lst)))
 
@@ -46,14 +65,26 @@ def encode_list(lst):
 def decode_array(s):
     '''
     base64-decode the given string.
+
+    :param s: String to decode
+    :type s: str
+
+    :rtype: list
     '''
     return json.loads(zlib.decompress(base64.b64decode(s)))
 
 
 def extreme(arr, direction):
     '''
-    Returns the extreme of the array `arr`, defined as the minimum if `direction` = -1,
+    Returns the extreme of an array, defined as the minimum if `direction` = -1,
     the maximum if `direction` = +1, and the most extreme value if `direction` = 0.
+
+    :param arr: Array for which to calculate the extreme
+    :type arr: numpy.ndarray
+    :param direction: Direction of the extreme; -1, 0, or 1
+    :type direction: int
+
+    :rtype: float
     '''
     if direction == -1:
         return np.nanmin(arr)

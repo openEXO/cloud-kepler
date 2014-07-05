@@ -3,64 +3,53 @@
 
 from __future__ import division
 import sys
+import logging
 import numpy as np
 import pandas as pd
 from collections import OrderedDict
 from PyKE.kepfit import lsqclip
-import logging
 from utils import extreme
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-def detrend_mean_remove(flux, period):
-    '''
-    Detrend removing the mean of each period. For each period-length segment, compute
-    and remove the mean flux.
-    '''
-    segment_ids = np.floor(np.array(flux.reset_index().time/period))
-
-    # Transform applies a function to each segment
-    return flux.flux.groupby(segment_ids).transform(lambda x: x - x.mean())
-
-
-def detrend_pyke_lsqclip(segment, order):
-    functype = 'poly' + str(order)
-    pinit = np.zeros(order + 1, dtype=np.float)
-    pinit[0] = segment.flux.mean()
-
-    sigma_threshold = 3
-    niter = 3
-    logfile = "kepler.log"
-    verbose = True
-    time = np.array(segment.index).astype(np.double)
-    coeffs, errors, covar, iiter, sigma, chi2, dof, fit, plotx1, ploty1, status = \
-    lsqclip(functype, pinit, time, np.array(segment.flux),
-            np.array(segment.flux_error),
-            sigma_threshold, sigma_threshold, niter, logfile, verbose)
-    trend = pd.Series(np.polyval(coeffs[::-1], time), index=segment.index)
-
-    return coeffs[::-1], trend
-
-
-def reindex_to_matrix(series, matrix):
+def __reindex_to_matrix(series, matrix):
     '''
     Reindexes a series on a 2d matrix of values. Pandas does not support 2d indexing,
     so we need to flatten the matrix, reindex, and then reshape the result back to 2d.
+
+    :param series: Array to reindex
+    :type series: pandas.Series
+    :param matrix: Reindexing matrix
+    :type matrix: numpy.ndarray
+
+    :rtype: numpy.ndarray
     '''
     return np.array(series.reindex(matrix.flatten())).reshape(matrix.shape)
 
 
-def compute_signal_residual(binned_segment, matrix, duration, n_bins_min_duration, direction):
+def __compute_signal_residual(binned_segment, matrix, duration, n_bins_min_duration, direction):
     '''
     Run BLS algorithm on a binned segment.
 
-    Returns: phase, duration, signal_residual, depth, and midtime
+    :param binned_segment: Segment for which to calculate the residual
+    :type binned_segment: pandas.DataFrame
+    :param matrx: Matrix of i1, i2 indices
+    :type matrix: numpy.ndarray
+    :param duration: Array of durations to consider
+    :type duration: numpy.ndarray
+    :param n_bins_min_duration: Length of minimum duration in full bins
+    :type n_bins_min_duration: int
+    :param direction: Signal direction to accept; -1 for dips, +1 for blips, or 0
+        for best
+    :type direction: int
+
+    :rtype: pandas.Series
     '''
     binned_segment_indexed = binned_segment.reset_index(drop=True)
-    r = reindex_to_matrix(binned_segment_indexed.samples, matrix).cumsum(axis=1)
-    s = reindex_to_matrix(binned_segment_indexed.flux, matrix).cumsum(axis=1)
+    r = __reindex_to_matrix(binned_segment_indexed.samples, matrix).cumsum(axis=1)
+    s = __reindex_to_matrix(binned_segment_indexed.flux, matrix).cumsum(axis=1)
     n = binned_segment_indexed.samples.sum()
     sr = s**2 / (r * (n - r))
 
@@ -82,9 +71,16 @@ def compute_signal_residual(binned_segment, matrix, duration, n_bins_min_duratio
             depths=np.nan, midtimes=np.nan))
 
 
-def phase_bin(segment, bins):
+def __phase_bin(segment, bins):
     '''
     Phase-bin a light curve segment.
+
+    :param segment: Segment to bin
+    :type segment: pandas.DataFrame
+    :param bins: Array of bin edges to use
+    :type bins: numpy.ndarray
+
+    :rtype: pandas.DataFrame
     '''
     # NOTE: emprice added `right` option to emualte behavior of other binning schemes.
     grouper = segment.groupby(pd.cut(segment['phase'], bins, right=False))
@@ -95,28 +91,37 @@ def phase_bin(segment, bins):
 
 
 def bls_pulse(time, flux, fluxerr, n_bins, segment_size, min_duration, max_duration,
-detrend_order=None, direction=0, remove_nan_segs=False):
+detrend_order=0, direction=0, remove_nan_segs=False):
     '''
-    Box Least Square fitting algorithm, vectorized implementation. See Kovacs et al. (2002)
+    Main function for this module; performs the BLS pulse algorithm on the input
+    lightcurve data, in a vectorized way. Lightcurve should be 0-based if no
+    detrending is used.
 
-    Inputs:
-      light_curve : pd.DataFrame
-        light curve with timing information in days (index), flux and flux error
-      segment_size : float
-        segment_size to be tested with BLS
-      min_duration, max_duration : float, float
-        minimum/maximum duration of the transit in days
-      n_bins : integer
-        number of bins used for binning the folded light curve
-      detrend : function
-        function to be used for detrending the flux
-      direction : integer
-        defines whether transits (-1), anti-transits (+1) or both (0) should be considered,
-        default is both (0)
+    See Kovacs et al. (2002)
 
-    Returns:
-      results : pd.DataFrame
-        phase, duration, signal_residual, depth and midtime
+    :param time: Array of times of observations; nominally in units of days
+    :type time: numpy.ndarray
+    :param flux: Array of fluxes corresponding to times
+    :type flux: numpy.ndarray
+    :param fluxerr: Array of flux errors corresponding to times
+    :type fluxerr: numpy.ndarray
+    :param n_bins: Number of bins in each segment
+    :type n_bins: int
+    :param segment_size: Length of a segment, in days
+    :type segment_size: float
+    :param min_duration: Minimum signal duration to accept, in days
+    :type min_duration: float
+    :param max_duration: Maximum signal duration to accept, in days
+    :type max_duration: float
+    :param direction: Signal direction to accept; -1 for dips, +1 for blips, or 0
+        for best
+    :type direction: int
+    :param detrend_order: Order of detrending to use on input; 0 for no detrending
+    :type detrend_order: int
+    :param remove_nan_segs: Remove from the output segments with no accepted events
+    :type remove_nan_segs: bool
+
+    :rtype: dict
     '''
     if segment_size <= 0.0:
         raise ValueError("Segment size must be > 0.")
@@ -142,7 +147,7 @@ detrend_order=None, direction=0, remove_nan_segs=False):
     # Define equally spaced bins and bin according to phase.
     bins = np.linspace(0., 1., n_bins+1)
     phase_binned_segments = light_curve.reset_index().groupby('segment').apply(lambda x:
-        phase_bin(x, bins=bins))
+        __phase_bin(x, bins=bins))
 
     i1 = np.arange(n_bins - n_bins_min_duration)[:,None]
     duration = np.arange(0, n_bins_max_duration)
@@ -156,7 +161,7 @@ detrend_order=None, direction=0, remove_nan_segs=False):
     matrix = i1 + duration
 
     results = phase_binned_segments.groupby(level="segment").apply(lambda x:
-        compute_signal_residual(x, matrix=matrix, duration=duration,
+        __compute_signal_residual(x, matrix=matrix, duration=duration,
         n_bins_min_duration=n_bins_min_duration, direction=direction))
 
     if remove_nan_segs:
@@ -170,55 +175,4 @@ detrend_order=None, direction=0, remove_nan_segs=False):
         return return_data, detrend_coefficients
     else:
         return return_data
-
-
-def bls_pulse_main(time, flux, fluxerr, n_bins, segment_size, min_duration, max_duration,
-direction=0, print_format='none', verbose=False, detrend_order=None):
-    '''
-    This is the main routine that allows the vectorized bls_pulse to be called from the
-    command line. It takes the same arguments as the corresponding function in bls_pulse.py.
-    '''
-    lc = pd.DataFrame(dict(flux=flux, flux_error=flux_error), index=time)
-    lc.index.name = 'time'
-
-    temp = bls_pulse_vec(lc, segment_size, min_duration, max_duration, n_bins,
-        detrend_order=detrend_order, direction=direction, remove_nan_segs=False)
-
-    if type(temp) is tuple:
-        # Depending on the detrending used, `temp` may be a tuple or a DataFrame;
-        # take only the first element if there is more than one.
-        temp = temp[0]
-
-    # Return format is DataFrame; NumPy arrays are easier to work with here.
-    srMax = temp['signal_residuals'].as_matrix()
-    transitDuration = temp['durations'].as_matrix()
-    transitDepth = temp['depths'].as_matrix()
-    transitMidTime = temp['midtimes'].as_matrix()
-    segments = temp.index
-
-    if print_format == 'encoded':
-        print "\t".join(map(str, [kic_id, encode_arr(srMax), encode_array(transitDuration),
-            encode_array(transitDepth), encode_array(transitMidTime)]))
-    elif print_format == 'normal':
-        print '-' * 80
-        print 'Kepler ' + kic_id
-        print 'Quarters: ' + quarters
-        print '-' * 80
-        print '{0: <7s} {1: <13s} {2: <10s} {3: <9s} {4: <13s}'.format('Segment',
-            'srMax', 'Duration', 'Depth', 'MidTime')
-
-        for ii, seq in enumerate(segments):
-            print '{0: <7d} {1: <13.6f} {2: <10.6f} {3: <9.6f} {4: <13.6f}'.format(ii,
-                srMax[ii], transitDuration[ii], transitDepth[ii], transitMidTime[ii])
-
-        print '-' * 80
-        print
-
-    return temp
-
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
-    logger.setLevel(logging.INFO)
-    main()
 

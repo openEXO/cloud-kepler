@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from detrend.polyfit import polyfit
+import detrend.polyfit as polyfit
 from numpy.polynomial import polynomial as poly
 cimport numpy as np
 cimport cython
@@ -22,9 +22,6 @@ cdef extern int do_bin_segment(double *time, double *flux, double *fluxerr, int 
 def bls_pulse(np.ndarray[double, ndim=1, mode='c'] time,
 np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] fluxerr,
 int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, direction=0):
-    '''
-
-    '''
     cdef int i, nsamples, nsegments, save
     cdef np.ndarray[double, ndim=1, mode='c'] stime, sflux, sfluxerr, samples
     cdef np.ndarray[double, ndim=2, mode='c'] srsq, depth, duration, midtime
@@ -72,7 +69,7 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, di
             continue
 
         if detrend_order != 0:
-            coeffs = polyfit(stime[ndx], sflux[ndx], sfluxerr[ndx], detrend_order)
+            coeffs = polyfit.polyfit(stime[ndx], sflux[ndx], sfluxerr[ndx], detrend_order)
             sflux /= poly.polyval(stime, coeffs)
 
         # Call the algorithm.
@@ -91,9 +88,6 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, di
 @cython.profile(True)
 def __prepare_lightcurve(np.ndarray[double, ndim=1, mode='c'] time,
 np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] fluxerr):
-    '''
-    Any assumptions about the lightcurve should be resolved in this function.
-    '''
     # TODO: Sort by time if it isn't already?
     
     # The phase-binning assumes a zero-based time index.
@@ -108,9 +102,6 @@ np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] 
 int nbins, double segsize, int nsamples, int n, int ndx, 
 np.ndarray[double, ndim=1, mode='c'] stime, np.ndarray[double, ndim=1, mode='c'] sflux,
 np.ndarray[double, ndim=1, mode='c'] sfluxerr, np.ndarray[double, ndim=1, mode='c'] samples):
-    '''
- 
-    '''
     do_bin_segment(&time[0], &flux[0], &fluxerr[0], nbins, segsize, nsamples, n, &ndx, 
         &stime[0], &sflux[0], &sfluxerr[0], &samples[0])
 
@@ -126,11 +117,6 @@ np.ndarray[double, ndim=1, mode='c'] samples, double segsize, double mindur, dou
 int direction, np.ndarray[double, ndim=1, mode='c'] srsq, 
 np.ndarray[double, ndim=1, mode='c'] duration, np.ndarray[double, ndim=1, mode='c'] depth, 
 np.ndarray[double, ndim=1, mode='c'] midtime):
-    '''
-    Takes binned arrays containing the time, flux, flux error, and sample counts, 
-    assuming that flux is already binned, detrended, and normalized to 1. Calls an 
-    external C function to perform BLS algorithm on each lightcurve segment.
-    '''
     cdef int nbins, n, nbins_min_dur, nbins_max_dur
     cdef double c
 

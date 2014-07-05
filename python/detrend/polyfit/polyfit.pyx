@@ -13,7 +13,11 @@ def polyfit(np.ndarray[double, ndim=1, mode='c'] time,
 np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] fluxerr,
 int order, double threshold=3., int niter=3):
     '''
-
+    Fits a polynomial to data and removes values by sigma clipping, iterating the
+    process as desired.
+    
+    :param time: Array of times
+    :type time: numpy.ndarray
     '''
     cdef int i
     cdef double sigma

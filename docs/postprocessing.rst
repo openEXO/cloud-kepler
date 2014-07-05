@@ -1,5 +1,5 @@
-`postprocessing` -- A module for analyzing output
-*************************************************
+``postprocessing`` -- Analyze output from BLS pulse
+***************************************************
 
 .. automodule:: postprocessing
 

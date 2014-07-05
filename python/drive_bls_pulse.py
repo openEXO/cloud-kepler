@@ -5,13 +5,15 @@ import sys
 import cProfile
 import logging
 import numpy as np
-from common import read_mapper_output
-from bls_pulse import bls_pulse_main
+from utils import read_mapper_output
+from bls_pulse_python import bls_pulse as bls_pulse_python
+from bls_pulse_vec import bls_pulse as bls_pulse_vec
+from bls_pulse_cython import bls_pulse as bls_pulse_cython
 from argparse import ArgumentParser
 from configparser import SafeConfigParser, NoOptionError
 
 # Basic logging configuration.
-logger = logging.getLogger(__main__)
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
@@ -19,6 +21,11 @@ def __init_parser(defaults):
     '''
     Set up an argument parser for all possible command line options. Returns the
     parser object.
+
+    :param defaults: Default values of each parameter
+    :type defaults: dict
+
+    :rtype: argparse.ArgumentParser
     '''
     parser = ArgumentParser()
     parser.add_argument('-c', '--config', action='store', type=str, dest='config',
@@ -52,6 +59,18 @@ def __init_parser(defaults):
 def __check_args(segment, mindur, maxdur, nbins, direction):
     '''
     Sanity-checks the input arguments; raises ValueError if any checks fail.
+
+    :param segment: Length of a segment in days
+    :type segment: float
+    :param mindur: Minimum signal duration to consider in days
+    :type mindur: float
+    :param maxdur: Maximum signal duration to consider in days
+    :type maxdur: float
+    :param nbins: Number of bins per segment
+    :type nbins: int
+    :param direction: Signal direction to accept; -1 for dips, +1 for blips, 0 for best,
+        or 2 for best dip and blip
+    :type direction: int
     '''
     if segment <= 0.:
         raise ValueError('Segment size must be > 0.')
@@ -67,7 +86,11 @@ def __check_args(segment, mindur, maxdur, nbins, direction):
         raise ValueError('%d is not a valid value for direction.' % direction)
 
 
-if __name__ == '__main__':
+def main():
+    '''
+    Main function for this module. Parses all command line arguments, reads in data
+    from stdin, and sends it to the proper BLS algorithm.
+    '''
     # This is a global list of default values that will be used by the argument parser
     # and the configuration parser.
     defaults = {'min_duration':'0.0416667', 'max_duration':'0.5', 'n_bins':'100',
@@ -126,4 +149,26 @@ if __name__ == '__main__':
             # Turn off profiling.
             pr.disable()
             pr.print_stats()
+
+        # Print output.
+        if fmt == 'encoded':
+            print "\t".join([d, encode_array(srsq), encode_array(duration),
+                encode_array(depth), encode_array(midtime)])
+        elif fmt == 'normal':
+            print "-" * 80
+            print "Kepler " + kic_id
+            print "Quarters: " + quarters
+            print "-" * 80
+            print '{0: <7s} {1: <13s} {2: <10s} {3: <9s} {4: <13s}'.format('Segment',
+                'srSquaredMax', 'Duration', 'Depth', 'Midtime')
+            for i in xrange(len(srsq)):
+                print '{0: <7d} {1: <13.6f} {2: <10.6f} {3: <9.6f} {4: <13.6f}'.format(i,
+                    srsq[i], duration[i], depth[i], midtime[i])
+            print "-" * 80
+            print
+            print
+
+
+if __name__ == '__main__':
+    main()
 
