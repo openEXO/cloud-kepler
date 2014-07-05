@@ -2,10 +2,9 @@
 BLS_PULSE algorithm, based on bls_pulse.pro originally written by Peter McCullough.
 '''
 
-import ipdb
 import logging
 import numpy as np
-import pandas as pd
+from utils import extreme
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -52,10 +51,6 @@ this_seg, lc_samplerate):
     thisDepth = np.nan
     thisMidTime = np.nan
 
-    # NOTE: Added by emprice.
-    c = np.mean(binFlx)
-    binFlx -= c
-
     # Initialize the "best" Signal Residue to NaN.
     best_SR = np.nan
 
@@ -73,36 +68,22 @@ this_seg, lc_samplerate):
                     # Update the best SR values.
                     best_SR = sr
 
-                    # Report the duration in units of hours, not bins.
-                    # Old way, in units of bins.
-                    # thisDuration = i2 - i1 + 1
-                    #thisDuration = sum(ppb[i1:i2+1]) * lc_samplerate * 24.
-                    thisDuration = (binTime[i2] - binTime[i1]) * 24.
+                    # Report the duration in units of days, not bins.
+                    thisDuration = binTime[i2] - binTime[i1]
 
-                    # Old way of calculating the depth was some sort of "average" depth across
-                    # the binned points, but I found that binned points that happen during
-                    # ingress/egress would greatly affect this, instead just take the min. flux
-                    # level during the event in question.
-                    # thisDepth = -s*n/(r*(n-r))
-                    curDepth = np.nanmin(binFlx[i1:i2+1])
-                    if curDepth < thisDepth or not np.isfinite(thisDepth):
-                        thisDepth = curDepth
+                    # Update the depth.
+                    thisDepth = extreme(binFlx[i1:i2+1], direction)
 
                     # Report the transit midtime in units of days.
-                    #thisMidTime = this_seg[0] + 0.5 * (i1+i2) * trial_segment / nbins
                     thisMidTime = (binTime[i2] + binTime[i1]) / 2.
-
-    # NOTE: Added by emprice.
-    binFlx += c
-    thisDepth += c
 
     # Return a tuple containing the Signal Residue and corresponding signal information.
     # If no Signal Residue was calculated in the loop above, then these will all be NaN's.
     return (best_SR, thisDuration, thisDepth, thisMidTime)
 
 
-def bls_pulse_main(time, flux, fluxerr, n_bins, segment_size, min_duration, max_duration,
-direction=0, print_format='none', verbose=False):
+def bls_pulse(time, flux, fluxerr, n_bins, segment_size, min_duration, max_duration,
+direction=0, print_format='none', verbose=False, detrend_order=0):
     # The number of bins can sometimes change, so make a working copy so that the original
     # value is still available.
     nbins = n_bins
@@ -243,9 +224,8 @@ direction=0, print_format='none', verbose=False):
     # Return each segment's best transit event.  Create a pandas data frame based on the
     # array of srMax and transit parameters.  The index of the pandas array will be the
     # segment number.
-    return_data = pd.DataFrame({ "srMaxVals": srMax, "durations": transitDuration,
-        "depths":transitDepth, "midtimes":transitMidTime},
-        index=pd.Index(range(len(segments))))
+    return_data = dict(srsq=srMax, duration=transitDuration, depth=transitDepth,
+        midtime=transitMidTime)
     return return_data
 
 

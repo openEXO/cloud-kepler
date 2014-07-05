@@ -7,8 +7,8 @@ cimport cython
 
 
 cdef extern int do_bls_pulse_segment(double *time, double *flux, double *fluxerr, double *samples,
-    int nbins, int n, int nbins_min_dur, int nbins_max_dur, double *srsq, double *duration, 
-    double *depth, double *midtime)
+    int nbins, int n, int nbins_min_dur, int nbins_max_dur, int direction, double *srsq, 
+    double *duration, double *depth, double *midtime)
 
 cdef extern int do_bin_segment(double *time, double *flux, double *fluxerr, int nbins,
     double segsize, int nsamples, int n, int *ndx, double *stime, double *sflux,
@@ -18,9 +18,9 @@ cdef extern int do_bin_segment(double *time, double *flux, double *fluxerr, int 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.profile(True)
-def bls_pulse_main(np.ndarray[double, ndim=1, mode='c'] time,
+def bls_pulse(np.ndarray[double, ndim=1, mode='c'] time,
 np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] fluxerr,
-int nbins, double segsize, double mindur, double maxdur, int detrend_order=3):
+int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, direction=0):
     '''
 
     '''
@@ -61,7 +61,7 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3):
         # Perform sigma clipping and polynomial detrending.
         ndx = np.where(np.isfinite(sflux))[0]
         
-        if len(ndx) <= detrend_order + 1 and detrend_order != -1:
+        if len(ndx) <= detrend_order + 1 and detrend_order != 0:
             # There aren't enough points to do any detrending; go on to the
             # next segment.
             srsq[i,:] = 0.
@@ -70,15 +70,19 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3):
             midtime[i,:] = np.nan
             continue
 
-        if detrend_order != -1:
+        if detrend_order != 0:
             coeffs = __lsqclip_detrend(stime[ndx], sflux[ndx], sfluxerr[ndx], detrend_order)
             sflux /= poly.polyval(stime, coeffs)
 
         # Call the algorithm.
         __bls_pulse_binned(stime, sflux, sfluxerr, samples, segsize, mindur, maxdur, 
-            srsq[i,:], duration[i,:], depth[i,:], midtime[i,:])
+            direction, srsq[i,:], duration[i,:], depth[i,:], midtime[i,:])
 
-    return (srsq, duration, depth, midtime)
+    ndx = np.argmax(srsq, axis=1)
+    ind = np.indices(ndx.shape)
+
+    return dict(srsq=srsq[ind,ndx], duration=duration[ind,ndx], depth=depth[ind,ndx], 
+        midtime=midtime[ind,ndx])
 
 
 @cython.boundscheck(False)
@@ -157,8 +161,9 @@ np.ndarray[double, ndim=1, mode='c'] sfluxerr, np.ndarray[double, ndim=1, mode='
 def __bls_pulse_binned(np.ndarray[double, ndim=1, mode='c'] time, 
 np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] fluxerr,
 np.ndarray[double, ndim=1, mode='c'] samples, double segsize, double mindur, double maxdur,
-np.ndarray[double, ndim=1, mode='c'] srsq, np.ndarray[double, ndim=1, mode='c'] duration,
-np.ndarray[double, ndim=1, mode='c'] depth, np.ndarray[double, ndim=1, mode='c'] midtime):
+int direction, np.ndarray[double, ndim=1, mode='c'] srsq, 
+np.ndarray[double, ndim=1, mode='c'] duration, np.ndarray[double, ndim=1, mode='c'] depth, 
+np.ndarray[double, ndim=1, mode='c'] midtime):
     '''
     Takes binned arrays containing the time, flux, flux error, and sample counts, 
     assuming that flux is already binned, detrended, and normalized to 1. Calls an 
@@ -180,19 +185,10 @@ np.ndarray[double, ndim=1, mode='c'] depth, np.ndarray[double, ndim=1, mode='c']
     depth[:] =  np.nan
     midtime[:] = np.nan
 
-    # The BLS pulse algorithm described in Kovacs, Zucker, & Mazeh (2002) assumes
-    # that the signal has zero arithmetic mean. We correct for that here and then
-    # add the correction back to the depths at the end.
-    c = np.nanmean(flux)
-    flux -= c
-
     # the total number of points that were binned
     n = np.sum(samples)
 
     do_bls_pulse_segment(&time[0], &flux[0], &fluxerr[0], &samples[0], nbins, n, 
-        nbins_min_dur, nbins_max_dur, &srsq[0], &duration[0], &depth[0], &midtime[0])
-
-    # Undo the flux correction.
-    flux += c
-    depth += c
+        nbins_min_dur, nbins_max_dur, direction, &srsq[0], &duration[0], &depth[0], 
+        &midtime[0])
 

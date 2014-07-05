@@ -7,7 +7,7 @@ import pandas as pd
 from collections import OrderedDict
 from PyKE.kepfit import lsqclip
 import logging
-from common import read_mapper_output, encode_array
+from utils import extreme
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -73,7 +73,8 @@ def compute_signal_residual(binned_segment, matrix, duration, n_bins_min_duratio
     if s[SR_index]*direction >= 0:
         return pd.Series(dict(phases=i1,
             durations=(binned_segment.time.values[i2]-binned_segment.time.values[i1]),
-            signal_residuals=sr[SR_index], depths=binned_segment.flux[i1:i2+1].min(),
+            signal_residuals=sr[SR_index],
+            depths=extreme(binned_segment.flux[i1:i2+1].values, direction),
             midtimes=0.5*(binned_segment.time.values[i1]+binned_segment.time.values[i2])))
     else:
         return pd.Series(dict(phases=np.nan, durations=np.nan, signal_residuals=np.nan,
@@ -92,7 +93,7 @@ def phase_bin(segment, bins):
     return y
 
 
-def bls_pulse_vec(light_curve, segment_size, min_duration, max_duration, n_bins,
+def bls_pulse(time, flux, fluxerr, n_bins, segment_size, min_duration, max_duration,
 detrend_order=None, direction=0, remove_nan_segs=False):
     '''
     Box Least Square fitting algorithm, vectorized implementation. See Kovacs et al. (2002)
@@ -125,6 +126,10 @@ detrend_order=None, direction=0, remove_nan_segs=False):
     if n_bins <= 1:
         raise ValueError("Number of bins must be > 1.")
 
+    light_curve = pd.DataFrame(data=np.column_stack((flux,fluxerr)), index=time,
+        columns=['flux','flux_error'])
+    light_curve.index.name = 'time'
+
     n_bins_min_duration = max(np.floor(min_duration/segment_size*n_bins), 1)
     n_bins_max_duration = np.ceil(max_duration/segment_size*n_bins)
     light_curve["segment"] = np.floor(np.array(light_curve.index).astype(np.float)/segment_size)
@@ -137,10 +142,6 @@ detrend_order=None, direction=0, remove_nan_segs=False):
     bins = np.linspace(0., 1., n_bins+1)
     phase_binned_segments = light_curve.reset_index().groupby('segment').apply(lambda x:
         phase_bin(x, bins=bins))
-
-    # NOTE: Added by emprice. Subtract off the mean of each segment.
-    c = phase_binned_segments.reset_index().groupby('segment').flux.apply(lambda x: x.mean())
-    phase_binned_segments.flux = detrend_mean_remove(phase_binned_segments, segment_size)
 
     i1 = np.arange(n_bins - n_bins_min_duration)[:,None]
     duration = np.arange(0, n_bins_max_duration)
@@ -160,15 +161,14 @@ detrend_order=None, direction=0, remove_nan_segs=False):
     if remove_nan_segs:
         results = results.dropna()
 
-    results["durations"] *= 24.
-
-    # NOTE: Added by emprice. Reverse the mean correction from earlier.
-    results['depths'] += c
+    return_data = dict(srsq=results.signal_residuals.values,
+        duration=results.durations.values, depth=results.depths.values,
+        midtime=results.midtimes.values)
 
     if detrend_order:
-        return results, detrend_coefficients
+        return return_data, detrend_coefficients
     else:
-        return results
+        return return_data
 
 
 def bls_pulse_main(time, flux, fluxerr, n_bins, segment_size, min_duration, max_duration,

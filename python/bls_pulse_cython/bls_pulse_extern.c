@@ -3,7 +3,11 @@
 
 #define min(a,b)        (a < b ? a : b)
 #define max(a,b)        (a > b ? a : b)
-#define extreme(a,b)    (fabs(a) > fabs(b) ? a : b)
+
+/* If d = -1, gives the minimum of a and b.
+ * If d = +1, gives the maximum of a and b.
+ * If d = 0, givees the most extreme value of a and b. */
+#define extreme(a,b,d)  (d ? (d * a > d * b ? a : b) : (fabs(a) > fabs(b) ? a : b))
 
 
 int do_bin_segment(double *time, double *flux, double *fluxerr, int nbins, 
@@ -57,7 +61,7 @@ int do_bin_segment(double *time, double *flux, double *fluxerr, int nbins,
 
 
 int do_bls_pulse_segment(double *time, double *flux, double *fluxerr, double *samples,
-    int nbins, int n, int nbins_min_dur, int nbins_max_dur, double *srsq, 
+    int nbins, int n, int nbins_min_dur, int nbins_max_dur, int direction, double *srsq, 
     double *duration, double *depth, double *midtime)
 {
     /**
@@ -96,7 +100,7 @@ int do_bls_pulse_segment(double *time, double *flux, double *fluxerr, double *sa
 
             s += flux[k];
             r += samples[k];
-            d = extreme(d, flux[k]);
+            d = extreme(d, flux[k], direction);
         }
         
         for (j = min(i + nbins_min_dur, nbins); j < min(i + nbins_max_dur + 1, nbins); j++)
@@ -109,11 +113,11 @@ int do_bls_pulse_segment(double *time, double *flux, double *fluxerr, double *sa
 
             s += flux[j];
             r += samples[j];
-            d = extreme(d, flux[j]);
+            d = extreme(d, flux[j], direction);
 
             srsqnew = (s * s) / (r * (nn - r));
 
-            if (srsqnew > srsqmax)
+            if ((srsqnew > srsqmax) && (direction * d >= 0))
             {
                 /* We found a better event than previously; overwrite the "best" 
                  * parameters. */

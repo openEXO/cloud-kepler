@@ -10,10 +10,10 @@ def simulate_box_lightcurve(period, duration, depth, shift, sn, nsamples, baseli
     # Calculate the time baseline as evenly spaced points up to the given baseline
     # value.
     time = np.linspace(0., baseline, nsamples)
-    flux = np.ones_like(time)
+    flux = np.zeros_like(time)
 
     # This is a rough estimate of the per-point uncertainty.
-    sigma = depth / sn
+    sigma = np.absolute(depth / sn)
     fluxerr = sigma * np.ones_like(time)
 
     # We subtract the initial phase (assumed centered) and modulo by the period.
@@ -22,7 +22,7 @@ def simulate_box_lightcurve(period, duration, depth, shift, sn, nsamples, baseli
 
     # Find points that lie in the transit and fill in fluxes.
     ndx = np.where((t > 0.) & (t < duration))
-    flux[ndx] = 1. - depth
+    flux[ndx] += depth
 
     # Add in the random errors.
     flux += np.random.normal(0., sigma, size=(nsamples,))
