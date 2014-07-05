@@ -6,7 +6,7 @@ import pstats
 import cProfile
 import logging
 import numpy as np
-from utils import read_mapper_output
+from utils import read_mapper_output, encode_array
 from bls_pulse_python import bls_pulse as bls_pulse_python
 from bls_pulse_vec import bls_pulse as bls_pulse_vec
 from bls_pulse_cython import bls_pulse as bls_pulse_cython
@@ -173,7 +173,7 @@ def main():
 
         # Print output.
         if fmt == 'encoded':
-            print "\t".join([d, encode_array(srsq), encode_array(duration),
+            print "\t".join([k, q, encode_array(srsq), encode_array(duration),
                 encode_array(depth), encode_array(midtime)])
         elif fmt == 'normal':
             print "-" * 80
