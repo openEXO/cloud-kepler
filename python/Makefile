@@ -13,5 +13,5 @@ latex-docs:
 clean:
 	cd bls_pulse_cython; make clean
 	cd detrend/polyfit; make clean
-	rm -f *.so *.pyc
+	rm -f *.pyc
 

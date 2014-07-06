@@ -5,5 +5,5 @@ default: polyfit.pyx setup.py
 	mv polyfit.so ..
 
 clean:
-	rm -rf build polyfit.c
+	rm -rf build polyfit.c ../polyfit.so
 

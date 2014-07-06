@@ -5,5 +5,5 @@ default: bls_pulse_cython.pyx bls_pulse_extern.c setup.py
 	mv bls_pulse_cython.so ..
 
 clean:
-	rm -rf build bls_pulse_cython.c
+	rm -rf build bls_pulse_cython.c ../bls_pulse_cython.so
 

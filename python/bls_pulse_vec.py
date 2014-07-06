@@ -171,8 +171,5 @@ detrend_order=3, direction=0, remove_nan_segs=False):
         duration=results.durations.values, depth=results.depths.values,
         midtime=results.midtimes.values)
 
-    if detrend_order:
-        return return_data, detrend_coefficients
-    else:
-        return return_data
+    return return_data
 

@@ -22,6 +22,11 @@ number, and cadence identifier on each line, such as::
 The special quarter identifier ``*`` will download all available quarters for the given
 KIC ID. ``slc`` indicates short-cadence data and ``llc`` indicates long-cadence data.
 
+The Python script ``get_data.py`` also accepts the keyword ``data`` followed by an absolute
+or relative filepath of a top-level data directory, with the same structure as the 
+*Kepler* archive on MAST; use this option instead of ``mast`` if your data is stored 
+locally.
+
 
 Configuration file options
 ==========================

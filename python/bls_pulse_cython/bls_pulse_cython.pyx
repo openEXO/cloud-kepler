@@ -57,24 +57,30 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, di
         duration_blip = np.empty((nsegments,nbins), dtype='float64')
         depth_blip = np.empty((nsegments,nbins), dtype='float64')
         midtime_blip = np.empty((nsegments,nbins), dtype='float64')
+    else:
+        srsq = np.empty((nsegments,nbins), dtype='float64')
+        duration = np.empty((nsegments,nbins), dtype='float64')
+        depth = np.empty((nsegments,nbins), dtype='float64')
+        midtime = np.empty((nsegments,nbins), dtype='float64')
         
-        for i in xrange(nsegments):
-            # Initialize these to zero for each new segment.
-            stime[:] = 0.
-            sflux[:] = 0.
-            sfluxerr[:] = 0.
-            samples[:] = 0.
+    for i in xrange(nsegments):
+        # Initialize these to zero for each new segment.
+        stime[:] = 0.
+        sflux[:] = 0.
+        sfluxerr[:] = 0.
+        samples[:] = 0.
 
-            # Get the binned data.
-            save = __get_binned_segment(time, flux, fluxerr, nbins, segsize, nsamples, i,
-                save, stime, sflux, sfluxerr, samples)
+        # Get the binned data.
+        save = __get_binned_segment(time, flux, fluxerr, nbins, segsize, nsamples, i,
+            save, stime, sflux, sfluxerr, samples)
 
-            # Perform sigma clipping and polynomial detrending.
-            ndx = np.where(np.isfinite(sflux))[0]
+        # Perform sigma clipping and polynomial detrending.
+        ndx = np.where(np.isfinite(sflux))[0]
         
-            if len(ndx) <= detrend_order + 1 and detrend_order != 0:
-                # There aren't enough points to do any detrending; go on to the
-                # next segment.
+        if len(ndx) <= detrend_order + 1 and detrend_order != 0:
+            # There aren't enough points to do any detrending; go on to the
+            # next segment.
+            if direction == 2:
                 srsq_dip[i,:] = 0.
                 depth_dip[i,:] = np.nan
                 duration_dip[i,:] = np.nan
@@ -83,24 +89,36 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, di
                 depth_blip[i,:] = np.nan
                 duration_blip[i,:] = np.nan
                 midtime_blip[i,:] = np.nan
-                continue
+            else:
+                srsq[i,:] = 0.
+                depth[i,:] = np.nan
+                duration[i,:] = np.nan
+                midtime[i,:] = np.nan
 
-            if detrend_order != 0:
-                coeffs = polyfit.polyfit(stime[ndx], sflux[ndx], sfluxerr[ndx], detrend_order)
-                sflux /= poly.polyval(stime, coeffs)
-                sflux -= 1.
+            continue
+
+        if detrend_order != 0:
+            coeffs = polyfit.polyfit(stime[ndx], sflux[ndx], sfluxerr[ndx], detrend_order)
+            sflux /= poly.polyval(stime, coeffs)
+            sflux -= 1.
             
-            # Call the algorithm.
+        # Call the algorithm.
+        if direction == 2:
             __bls_pulse_binned_compound(stime, sflux, sfluxerr, samples, segsize, mindur,
                 maxdur, srsq_dip[i,:], duration_dip[i,:], depth_dip[i,:], midtime_dip[i,:],
                 srsq_blip[i,:], duration_blip[i,:], depth_blip[i,:], midtime_blip[i,:])
-        
-        # Fix the time offset (subtracted off earlier).
-        time += t
+        else:
+            __bls_pulse_binned(stime, sflux, sfluxerr, samples, segsize, mindur, maxdur, 
+                direction, srsq[i,:], duration[i,:], depth[i,:], midtime[i,:])
+
+    # Fix the time offset (subtracted off earlier).
+    time += t
+
+    if direction == 2:
         midtime_dip += t
         midtime_blip += t
         
-        # Maximize over the bin axis (for now).
+        # Maximize over the bin axis.
         ndx1 = np.argmax(srsq_dip, axis=1)
         ind1 = np.indices(ndx1.shape)
         ndx2 = np.argmax(srsq_blip, axis=1)
@@ -112,48 +130,9 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, di
             duration_blip=duration_blip[ind2,ndx2].ravel(), 
             depth_blip=depth_blip[ind2,ndx2].ravel(), midtime_blip=midtime_blip[ind2,ndx2].ravel())
     else:
-        srsq = np.empty((nsegments,nbins), dtype='float64')
-        duration = np.empty((nsegments,nbins), dtype='float64')
-        depth = np.empty((nsegments,nbins), dtype='float64')
-        midtime = np.empty((nsegments,nbins), dtype='float64')
-
-        for i in xrange(nsegments):
-            # Initialize these to zero for each new segment.
-            stime[:] = 0.
-            sflux[:] = 0.
-            sfluxerr[:] = 0.
-            samples[:] = 0.
-
-            # Get the binned data.
-            save = __get_binned_segment(time, flux, fluxerr, nbins, segsize, nsamples, i,
-                save, stime, sflux, sfluxerr, samples)
-
-            # Perform sigma clipping and polynomial detrending.
-            ndx = np.where(np.isfinite(sflux))[0]
-        
-            if len(ndx) <= detrend_order + 1 and detrend_order != 0:
-                # There aren't enough points to do any detrending; go on to the
-                # next segment.
-                srsq[i,:] = 0.
-                depth[i,:] = np.nan
-                duration[i,:] = np.nan
-                midtime[i,:] = np.nan
-                continue
-
-            if detrend_order != 0:
-                coeffs = polyfit.polyfit(stime[ndx], sflux[ndx], sfluxerr[ndx], detrend_order)
-                sflux /= poly.polyval(stime, coeffs)
-                sflux -= 1.
-
-            # Call the algorithm.
-            __bls_pulse_binned(stime, sflux, sfluxerr, samples, segsize, mindur, maxdur, 
-                direction, srsq[i,:], duration[i,:], depth[i,:], midtime[i,:])
-        
-        # Fix the time offset (subtracted off earlier).
-        time += t
         midtime += t
-
-        # Maximize over the bin axis (for now).
+        
+        # Maximize over the bin axis.
         ndx = np.argmax(srsq, axis=1)
         ind = np.indices(ndx.shape)
     
@@ -171,7 +150,6 @@ np.ndarray[double, ndim=1, mode='c'] stime, np.ndarray[double, ndim=1, mode='c']
 np.ndarray[double, ndim=1, mode='c'] sfluxerr, np.ndarray[double, ndim=1, mode='c'] samples):
     do_bin_segment(&time[0], &flux[0], &fluxerr[0], nbins, segsize, nsamples, n, &ndx, 
         &stime[0], &sflux[0], &sfluxerr[0], &samples[0])
-
     return ndx
 
 
