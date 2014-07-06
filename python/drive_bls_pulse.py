@@ -160,34 +160,67 @@ def main():
         else:
             raise ValueError('Invalid mode: %s' % mode)
 
-        srsq = out['srsq']
-        duration = out['duration']
-        depth = out['depth']
-        midtime = out['midtime']
-
         if profile:
             # Turn off profiling.
             pr.disable()
             ps = pstats.Stats(pr, stream=sys.stderr).sort_stats('time')
             ps.print_stats()
 
-        # Print output.
-        if fmt == 'encoded':
-            print "\t".join([k, q, encode_array(srsq), encode_array(duration),
-                encode_array(depth), encode_array(midtime)])
-        elif fmt == 'normal':
-            print "-" * 80
-            print "Kepler " + k
-            print "Quarters: " + q
-            print "-" * 80
-            print '{0: <7s} {1: <13s} {2: <10s} {3: <9s} {4: <13s}'.format('Segment',
-                'SR^2', 'Duration', 'Depth', 'Midtime')
-            for i in xrange(len(srsq)):
-                print '{0: <7d} {1: <13.6f} {2: <10.6f} {3: <9.6f} {4: <13.6f}'.format(i,
-                    srsq[i], duration[i], depth[i], midtime[i])
-            print "-" * 80
-            print
-            print
+        if direction == 2:
+            srsq_dip = out['srsq_dip']
+            duration_dip = out['duration_dip']
+            depth_dip = out['depth_dip']
+            midtime_dip = out['midtime_dip']
+            srsq_blip = out['srsq_blip']
+            duration_blip = out['duration_blip']
+            depth_blip = out['depth_blip']
+            midtime_blip = out['midtime_blip']
+
+            # Print output.
+            if fmt == 'encoded':
+                print "\t".join([k, q, encode_array(srsq_dip), encode_array(duration_dip),
+                    encode_array(depth_dip), encode_array(midtime_dip),
+                    encode_array(srsq_blip), encode_array(duration_blip),
+                    encode_array(depth_blip), encode_array(midtime_blip)])
+            elif fmt == 'normal':
+                print "-" * 120
+                print "Kepler " + k
+                print "Quarters: " + q
+                print "-" * 120
+                print '{0: <7s} {1: <13s} {2: <13s} {3: <13s} {4: <13s} {5: <13s} {6: <13s} {7: <13s} ' \
+                    '{8: <13s}'.format('Segment', 'Dip SR^2', 'Dip dur.', 'Dip depth', 'Dip mid.',
+                    'Blip SR^2', 'Blip dur.', 'Blip depth', 'Blip mid.')
+                for i in xrange(len(srsq_dip)):
+                    print '{0: <7d} {1: <13.6f} {2: <13.6f} {3: <13.6f} {4: <13.6f} ' \
+                        '{5: <13.6f} {6: <13.6f} {7: <13.6f} {8: <13.6f}'.format(i,
+                        srsq_dip[i], duration_dip[i], depth_dip[i], midtime_dip[i],
+                        srsq_blip[i], duration_blip[i], depth_blip[i], midtime_blip[i])
+                print "-" * 120
+                print
+                print
+        else:
+            srsq = out['srsq']
+            duration = out['duration']
+            depth = out['depth']
+            midtime = out['midtime']
+
+            # Print output.
+            if fmt == 'encoded':
+                print "\t".join([k, q, encode_array(srsq), encode_array(duration),
+                    encode_array(depth), encode_array(midtime)])
+            elif fmt == 'normal':
+                print "-" * 80
+                print "Kepler " + k
+                print "Quarters: " + q
+                print "-" * 80
+                print '{0: <7s} {1: <13s} {2: <10s} {3: <9s} {4: <13s}'.format('Segment',
+                    'SR^2', 'Duration', 'Depth', 'Midtime')
+                for i in xrange(len(srsq)):
+                    print '{0: <7d} {1: <13.6f} {2: <10.6f} {3: <9.6f} {4: <13.6f}'.format(i,
+                        srsq[i], duration[i], depth[i], midtime[i])
+                print "-" * 80
+                print
+                print
 
 
 if __name__ == '__main__':

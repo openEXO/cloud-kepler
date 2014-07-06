@@ -38,6 +38,35 @@ def read_mapper_output(f, separator='\t', uri=False):
         yield kic, q, time, flux, fluxerr
 
 
+def read_pipeline_output(f, separator='\t'):
+    '''
+    Reads data from the input file, assuming the given separator, in base64 format;
+    yields the decoded and split line. The format for each line is KIC ID, quarter,
+    srsq_dip, duration_dip, depth_dip, midtime_dip, srsq_blip, duration_blip,
+    depth_blip, midtime_blip.
+
+    :param f: File to read; usually stdin
+    :type f: file
+    :param separator: Sepearator between parts of an entry
+    :type separator: str
+
+    :rtype: tuple
+    '''
+    for line in f:
+        kic, q, a1, a2, a3, a4, b1, b2, b3, b4 = line.rstrip().split(separator)
+
+        srsq_dip = decode_array(a1)
+        duration_dip = decode_array(a2)
+        depth_dip = decode_array(a3)
+        midtime_dip = decode_array(a4)
+        srsq_blip = decode_array(b1)
+        duration_blip = decode_array(b2)
+        depth_blip = decode_array(b3)
+        midtime_blip = decode_array(b4)
+        yield kic, q, srsq_dip, duration_dip, depth_dip, midtime_dip, srsq_blip, \
+            duration_blip, depth_blip, midtime_blip
+
+
 def encode_array(arr):
     '''
     base64-encodes the given numpy array.
