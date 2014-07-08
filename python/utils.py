@@ -42,8 +42,8 @@ def read_pipeline_output(f, separator='\t'):
     '''
     Reads data from the input file, assuming the given separator, in base64 format;
     yields the decoded and split line. The format for each line is KIC ID, quarter,
-    srsq_dip, duration_dip, depth_dip, midtime_dip, srsq_blip, duration_blip,
-    depth_blip, midtime_blip.
+    segment_start, segment_end, srsq_dip, duration_dip, depth_dip, midtime_dip,
+    srsq_blip, duration_blip, depth_blip, midtime_blip.
 
     :param f: File to read; usually stdin
     :type f: file
@@ -53,8 +53,10 @@ def read_pipeline_output(f, separator='\t'):
     :rtype: tuple
     '''
     for line in f:
-        kic, q, a1, a2, a3, a4, b1, b2, b3, b4 = line.rstrip().split(separator)
+        kic, q, s1, s2, a1, a2, a3, a4, b1, b2, b3, b4 = line.rstrip().split(separator)
 
+        segstart = decode_array(s1)
+        segend = decode_array(s2)
         srsq_dip = decode_array(a1)
         duration_dip = decode_array(a2)
         depth_dip = decode_array(a3)
@@ -63,8 +65,9 @@ def read_pipeline_output(f, separator='\t'):
         duration_blip = decode_array(b2)
         depth_blip = decode_array(b3)
         midtime_blip = decode_array(b4)
-        yield kic, q, srsq_dip, duration_dip, depth_dip, midtime_dip, srsq_blip, \
-            duration_blip, depth_blip, midtime_blip
+
+        yield kic, q, segstart, segend, srsq_dip, duration_dip, depth_dip, midtime_dip, \
+            srsq_blip, duration_blip, depth_blip, midtime_blip
 
 
 def encode_array(arr):
@@ -103,23 +106,23 @@ def decode_array(s):
     return json.loads(zlib.decompress(base64.b64decode(s)))
 
 
-def extreme(arr, direction):
+def extreme(a, b, direction):
     '''
-    Returns the extreme of an array, defined as the minimum if `direction` = -1,
-    the maximum if `direction` = +1, and the most extreme value if `direction` = 0.
 
-    :param arr: Array for which to calculate the extreme
-    :type arr: numpy.ndarray
-    :param direction: Direction of the extreme; -1, 0, or 1
-    :type direction: int
-
-    :rtype: float
     '''
-    if direction == -1:
-        return np.nanmin(arr)
-    elif direction == 1:
+    return (a if (direction * a > direction * b) else b) if direction \
+        else (a if (abs(a) > abs(b)) else b)
+
+
+def extreme_vec(arr, direction):
+    '''
+
+    '''
+    if direction == 1:
         return np.nanmax(arr)
-    elif direction == 0:
+    elif direction == -1:
+        return np.nanmin(arr)
+    else:
         ndx = np.nanargmax(np.absolute(arr))
         return arr[ndx]
 

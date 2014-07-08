@@ -14,7 +14,7 @@
 
 int do_bin_segment(double *time, double *flux, double *fluxerr, int nbins, 
     double segsize, int nsamples, int n, int *ndx, double *stime, double *sflux, 
-    double *sfluxerr, double *samples)
+    double *sfluxerr, double *samples, double *start, double *end)
 {
     /**
      * This function is intended to be a very optimized phase-binning implementation.
@@ -25,7 +25,8 @@ int do_bin_segment(double *time, double *flux, double *fluxerr, int nbins,
      */
 
     /* Calculate the beginning and end times for this segment. */
-    double start = ((double) n) * segsize, end = start + segsize;
+    *start = ((double) n) * segsize;
+    *end = *start + segsize;
 
     /* Calculate the size of a single bin. */
     double binsize = segsize / ((double) nbins);
@@ -41,10 +42,10 @@ int do_bin_segment(double *time, double *flux, double *fluxerr, int nbins,
             continue;
         }
 
-        if ((time[i] >= end) || (i >= nsamples))
+        if ((time[i] >= *end) || (i >= nsamples))
             break;
 
-        j = (int) floor((time[i] - start) / binsize);
+        j = (int) floor((time[i] - *start) / binsize);
 
         /* We're just adding here; we'll divide by the count number at the end. */
         stime[j] += time[i];

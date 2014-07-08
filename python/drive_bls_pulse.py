@@ -149,9 +149,11 @@ def main():
             pr.enable()
 
         if mode == 'python':
+            raise NotImplementedError
             out = bls_pulse_python(time, flux, fluxerr, nbins, segment, mindur, maxdur,
                 direction=direction)
         elif mode == 'vec':
+            raise NotImplementedError
             out = bls_pulse_vec(time, flux, fluxerr, nbins, segment, mindur, maxdur,
                 direction=direction)
         elif mode == 'cython':
@@ -175,11 +177,13 @@ def main():
             duration_blip = out['duration_blip']
             depth_blip = out['depth_blip']
             midtime_blip = out['midtime_blip']
+            segstart = out['segstart']
+            segend = out['segend']
 
             # Print output.
             if fmt == 'encoded':
-                print "\t".join([k, q, encode_array(srsq_dip), encode_array(duration_dip),
-                    encode_array(depth_dip), encode_array(midtime_dip),
+                print "\t".join([k, q, encode_array(segstart), encode_array(segend), encode_array(srsq_dip),
+                    encode_array(duration_dip), encode_array(depth_dip), encode_array(midtime_dip),
                     encode_array(srsq_blip), encode_array(duration_blip),
                     encode_array(depth_blip), encode_array(midtime_blip)])
             elif fmt == 'normal':
@@ -203,11 +207,13 @@ def main():
             duration = out['duration']
             depth = out['depth']
             midtime = out['midtime']
+            segstart = out['segstart']
+            segend = out['segend']
 
             # Print output.
             if fmt == 'encoded':
-                print "\t".join([k, q, encode_array(srsq), encode_array(duration),
-                    encode_array(depth), encode_array(midtime)])
+                print "\t".join([k, q, encode_array(segstart), encode_array(segend), encode_array(srsq),
+                    encode_array(duration), encode_array(depth), encode_array(midtime)])
             elif fmt == 'normal':
                 print "-" * 80
                 print "Kepler " + k

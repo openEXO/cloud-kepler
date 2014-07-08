@@ -105,85 +105,180 @@ class DataStream:
             print '{0: <11.5f} {1: <15.5f} {2: <7.5f}'.format(d1, d2, d3)
 
 
-############################################################################################
-# This function, and its utility functions, retrieves data from the MAST archive over the web.
-############################################################################################
-def get_data_from_mast(data):
-    for kepler_id, quarter, suffix in data:
-        # Fix kepler_id missing zero-padding
-        if len(kepler_id) < 9:
-            kepler_id = str("%09d" % int(kepler_id))
-
-        # Now create the URLs.
-        path = get_mast_path(kepler_id, quarter, suffix)
-
-        for p in path:
-            # Download the requested URL.
-            try:
-                fits_stream = download_file_serialize(p)
-                tempfile, stream = process_fits_object(fits_stream)
-            except RuntimeError:
-                logging.error('Cannot download: ' + p)
-                continue
-
-            # Write the result to STDOUT as this will be an input to a
-            # reducer that aggregates the querters together
-            print "\t".join([kepler_id + '_' + suffix, quarter, p, stream.dstream1, stream.dstream2,
-                stream.dstream3])
-            os.unlink(tempfile)
-
-
-def download_file_serialize(uri):
+class MASTDataDownloader(object):
     '''
-    Downloads the FITS file at the given URI; if that fails, attempts to download the
-    file from the backup URI. On success, returns a raw character stream. On failure,
-    output is an empty string.
+    Retrieves data from the MAST archive over the web.
     '''
-    try:
-        response = urllib2.urlopen(uri)
-        fits_stream = response.read()
-    except:
-        raise RuntimeError
 
-    return fits_stream
+    def __init__(self, data, printout=True):
+        for kepler_id, quarter, suffix in data:
+            # Fix kepler_id missing zero-padding
+            if len(kepler_id) < 9:
+                kepler_id = str("%09d" % int(kepler_id))
+
+            # Now create the URLs.
+            path = self.__get_mast_path(kepler_id, quarter, suffix)
+
+            for p in path:
+                # Download the requested URL.
+                try:
+                    fits_stream = self.__download_file_serialize(p)
+                    tempfile, stream = self.__process_fits_object(fits_stream)
+                except RuntimeError:
+                    logging.error('Cannot download: ' + p)
+                    continue
+
+                if printout:
+                    # Write the result to STDOUT as this will be an input to a
+                    # reducer that aggregates the querters together
+                    print "\t".join([kepler_id + '_' + suffix, quarter, p, stream.dstream1,
+                        stream.dstream2, stream.dstream3])
+
+                os.unlink(tempfile)
 
 
-def get_mast_path(kepler_id, quarter, suffix):
+    def __download_file_serialize(self, uri):
+        '''
+        Downloads the FITS file at the given URI; if that fails, attempts to download the
+        file from the backup URI. On success, returns a raw character stream. On failure,
+        output is an empty string.
+        '''
+        try:
+            response = urllib2.urlopen(uri)
+            fits_stream = response.read()
+        except:
+            raise RuntimeError
+
+        return fits_stream
+
+
+    def __get_mast_path(self, kepler_id, quarter, suffix):
+        '''
+        Construct download path from MAST, given the Kepler ID and quarter.
+        '''
+        prefix = kepler_id[0:4]
+        path = []
+
+        if suffix == 'llc':
+            for p in LONG_QUARTER_PREFIXES[quarter]:
+                path.append('http://archive.stsci.edu/pub/kepler/lightcurves/' + prefix + '/' + \
+                    kepler_id + '/kplr' + kepler_id + '-' + p + '_' + suffix + '.fits')
+        elif suffix == 'slc':
+            for p in SHORT_QUARTER_PREFIXES[quarter]:
+                path.append('http://archive.stsci.edu/pub/kepler/lightcurves/' + prefix + '/' + \
+                    kepler_id + '/kplr' + kepler_id + '-' + p + '_' + suffix + '.fits')
+        else:
+            raise ValueError('Invalid cadence key: %s' % suffix)
+
+        return path
+
+
+    def __process_fits_object(self, fits_string):
+        '''
+        Process FITS file object and extract info.
+        http://stackoverflow.com/questions/11892623/python-stringio-and-compatibility-with-with-statement-context-manager
+        Returns the temporary file name and DataStream object.
+        '''
+        test = ''
+        with self.__tempinput(fits_string) as tempfilename:
+            test = tempfilename
+            fitsdata = pyfits.getdata(tempfilename)
+            bjd_trunci = float(pyfits.getval(tempfilename, 'bjdrefi', ext=1))
+            bjd_truncf = float(pyfits.getval(tempfilename, 'bjdreff', ext=1))
+
+            # Note: Times are updated to be in proper reduced barycentric Julian date,
+            # RBJD = BJD - 2400000.0
+            time = fitsdata['TIME'] + bjd_trunci + bjd_truncf - 2400000.
+            pdcflux = fitsdata['PDCSAP_FLUX']
+            pdcerror = fitsdata['PDCSAP_FLUX_ERR']
+            errorstat = fitsdata['SAP_QUALITY']
+
+            ndx = np.where(errorstat == 0)
+            retval = DataStream(arrays=(time[ndx], pdcflux[ndx], pdcerror[ndx]))
+
+            # Fix for windows, returns the filename into main so that os.unlink can be called there
+            return test, retval
+
+
+    @contextmanager
+    def __tempinput(self, data):
+        '''
+        Handle old legacy code that absolutely demands a filename instead of streaming
+        file content.
+        '''
+        temp = tempfile.NamedTemporaryFile(delete=False)
+        temp.write(data)
+        temp.close()
+        yield temp.name
+
+
+class DiskDataLoader(object):
     '''
-    Construct download path from MAST, given the Kepler ID and quarter.
+    Retrieves data from a disk given a specified root directory (relative or absolute).
+    The FITS files are expected to be under that directory with the pathspec
+    <root directory>/<4-digit short KepID>/<full KepID>/
     '''
-    prefix = kepler_id[0:4]
-    path = []
+    def __init__(self, data, datapath, printout=True):
+        for kepler_id, quarter, suffix in data:
+            # Fix kepler_id missing zero-padding
+            if len(kepler_id) < 9:
+                kepler_id = str("%09d" % int(kepler_id))
 
-    if suffix == 'llc':
-        for p in LONG_QUARTER_PREFIXES[quarter]:
-            path.append('http://archive.stsci.edu/pub/kepler/lightcurves/' + prefix + '/' + \
-                kepler_id + '/kplr' + kepler_id + '-' + p + '_' + suffix + '.fits')
-    elif suffix == 'slc':
-        for p in SHORT_QUARTER_PREFIXES[quarter]:
-            path.append('http://archive.stsci.edu/pub/kepler/lightcurves/' + prefix + '/' + \
-                kepler_id + '/kplr' + kepler_id + '-' + p + '_' + suffix + '.fits')
-    else:
-        raise ValueError('Invalid cadence key: %s' % suffix)
+            # Now create the URL regardless of Quarter.
+            path = self.__get_fits_path(datapath, kepler_id, quarter, suffix)
 
-    return path
+            for p in path:
+                # Read in the FITS file and create the DataStream object.
+                try:
+                    stream = self.__read_fits_file(p, kepler_id)
+                except RuntimeError:
+                    logging.error("Cannot read: " + p)
+                    continue
+
+                if printout:
+                    # Write the result to STDOUT as this will be an input to a
+                    # reducer that aggregates the querters together
+                    print "\t".join([kepler_id + '_' + suffix, quarter, p, stream.dstream1,
+                        stream.dstream2, stream.dstream3])
 
 
-def process_fits_object(fits_string):
-    '''
-    Process FITS file object and extract info.
-    http://stackoverflow.com/questions/11892623/python-stringio-and-compatibility-with-with-statement-context-manager
-    Returns the temporary file name and DataStream object.
-    '''
-    test = ''
-    with tempinput(fits_string) as tempfilename:
-        test = tempfilename
-        fitsdata = pyfits.getdata(tempfilename)
-        bjd_trunci = float(pyfits.getval(tempfilename, 'bjdrefi', ext=1))
-        bjd_truncf = float(pyfits.getval(tempfilename, 'bjdreff', ext=1))
+    def __get_fits_path(self, datapath, kepler_id, quarter, suffix):
+        '''
+        Construct file path on disk, given the base path, Kepler ID, and quarter.
+        '''
+        prefix = kepler_id[0:4]
+        path = []
 
+        if suffix == 'llc':
+            for p in LONG_QUARTER_PREFIXES[quarter]:
+                path.append(os.path.join(datapath, prefix, kepler_id, 'kplr' + kepler_id + '-' +
+                    p + '_' + suffix + '.fits'))
+        elif suffix == 'slc':
+            for p in SHORT_QUARTER_PREFIXES[quarter]:
+                path.append(os.path.join(datapath, prefix, kepler_id, 'kplr' + kepler_id + '-' +
+                    p + '_' + suffix + '.fits'))
+        else:
+            raise ValueError('Invalid cadence key: %s' % suffix)
+
+        return path
+
+
+    def __read_fits_file(self, input_fits_file, kepler_id):
+        '''
+        Read FITS file from disk for each quarter and each object into memory.
+        '''
+        try:
+            hdulist = pyfits.open(input_fits_file)
+        except:
+            raise RuntimeError
+
+        # Otherwise we've successfully opened the FITS file, so read the data, close the FITS
+        # file, and create the DataStream object.
         # Note: Times are updated to be in proper reduced barycentric Julian date,
         # RBJD = BJD - 2400000.0
+        fitsdata = hdulist[1].data
+        bjd_trunci = float(hdulist[1].header['bjdrefi'])
+        bjd_truncf = float(hdulist[1].header['bjdreff'])
         time = fitsdata['TIME'] + bjd_trunci + bjd_truncf - 2400000.
         pdcflux = fitsdata['PDCSAP_FLUX']
         pdcerror = fitsdata['PDCSAP_FLUX_ERR']
@@ -191,126 +286,33 @@ def process_fits_object(fits_string):
 
         ndx = np.where(errorstat == 0)
         retval = DataStream(arrays=(time[ndx], pdcflux[ndx], pdcerror[ndx]))
+        hdulist.close()
 
-        # Fix for windows, returns the filename into main so that os.unlink can be called there
-        return test, retval
+        return retval
 
 
-@contextmanager
-def tempinput(data):
+def main(source, datapath):
     '''
-    Handle old legacy code that absolutely demands a filename instead of streaming file content.
+    Get data from the specified source and optional data path.
+
+    :param source: Either "disk" or "mast"
+    :type source: str
+    :param datapath: If ``source`` is "disk", then the path to the files; ignored otherwise
+    :type datapath: str
     '''
-    temp = tempfile.NamedTemporaryFile(delete=False)
-    temp.write(data)
-    temp.close()
-    yield temp.name
-############################################################################################
-
-
-############################################################################################
-# This function, and its utility functions, retrieves data from a disk given a specified
-# root directory.The FITS files are expected to be under that directory in the following
-# format: <root directory>/<4-digit short KepID>/<full KepID>/
-############################################################################################
-def get_data_from_disk(data, datapath):
-    for kepler_id, quarter, suffix in data:
-        # Fix kepler_id missing zero-padding
-        if len(kepler_id) < 9:
-            kepler_id = str("%09d" % int(kepler_id))
-
-        # Now create the URL regardless of Quarter.
-        path = get_fits_path(datapath, kepler_id, quarter, suffix)
-
-        for p in path:
-            # Read in the FITS file and create the DataStream object.
-            try:
-                stream = read_fits_file(p, kepler_id)
-            except RuntimeError:
-                logging.error("Cannot read: " + p)
-                continue
-
-            # Write the result to STDOUT as this will be an input to a
-            # reducer that aggregates the querters together
-            print "\t".join([kepler_id + '_' + suffix, quarter, p, stream.dstream1, stream.dstream2,
-                stream.dstream3])
-
-
-def get_fits_path(datapath, kepler_id, quarter, suffix):
-    '''
-    Construct file path on disk, given the base path, Kepler ID, and quarter.
-    '''
-    prefix = kepler_id[0:4]
-    path = []
-
-    if suffix == 'llc':
-        for p in LONG_QUARTER_PREFIXES[quarter]:
-            path.append(os.path.join(datapath, prefix, kepler_id, 'kplr' + kepler_id + '-' +
-                p + '_' + suffix + '.fits'))
-    elif suffix == 'slc':
-        for p in SHORT_QUARTER_PREFIXES[quarter]:
-            path.append(os.path.join(datapath, prefix, kepler_id, 'kplr' + kepler_id + '-' +
-                p + '_' + suffix + '.fits'))
-    else:
-        raise ValueError('Invalid cadence key: %s' % suffix)
-
-    return path
-
-
-def read_fits_file(input_fits_file, kepler_id):
-    '''
-    Read FITS file from disk for each quarter and each object into memory.
-    '''
-    try:
-        hdulist = pyfits.open(input_fits_file)
-    except:
-        raise RuntimeError
-
-    # Otherwise we've successfully opened the FITS file, so read the data, close the FITS
-    # file, and create the DataStream object.
-    # Note: Times are updated to be in proper reduced barycentric Julian date,
-    # RBJD = BJD - 2400000.0
-    fitsdata = hdulist[1].data
-    bjd_trunci = float(hdulist[1].header['bjdrefi'])
-    bjd_truncf = float(hdulist[1].header['bjdreff'])
-    time = fitsdata['TIME'] + bjd_trunci + bjd_truncf - 2400000.
-    pdcflux = fitsdata['PDCSAP_FLUX']
-    pdcerror = fitsdata['PDCSAP_FLUX_ERR']
-    errorstat = fitsdata['SAP_QUALITY']
-
-    ndx = np.where(errorstat == 0)
-    retval = DataStream(arrays=(time[ndx], pdcflux[ndx], pdcerror[ndx]))
-    hdulist.close()
-
-    return retval
-############################################################################################
-
-
-############################################################################################
-# This code block contains the main function, and utility functions only called within "main".
-# The input "source" is a scalar string set via the command line that specifies from where
-# the data should be retrieved.
-#
-# Example: more <text file containing Kepler IDs and Quarters> | python get_data.py mast
-############################################################################################
-def main(source,datapath):
-    """"
-    Read KIC IDs and quarters from STDIN, retrieve FITS files, and
-    process FITS file on the fly in memory.
-    """
     # Read in a list of KIC IDs and Quarter numbers to process from STDIN.
-    data = read_input(sys.stdin)
+    data = __read_input(sys.stdin)
 
     # Call the correct function based on the desired source.
-    if source == "mast":
-        get_data_from_mast(data)
-    elif source == "disk":
-        get_data_from_disk(data,datapath)
+    if source == 'mast':
+        ldr = MASTDataDownloader(data, printout=True)
+    elif source == 'disk':
+        ldr = DiskDataLoader(data, datapath, printout=True)
     else:
-        raise ValueError("Invalid choice for source parameter.")
+        raise ValueError('Invalid source parameter: %s' % source)
 
 
-def read_input(file):
+def __read_input(file):
     for line in file:
         # Split the line into words
         s = line.split()
@@ -322,7 +324,7 @@ def read_input(file):
                     yield [s[0], str(i), s[2]]
             else:
                 yield s
-############################################################################################
+
 
 if __name__ == "__main__":
     # Set up the command line argument parser.

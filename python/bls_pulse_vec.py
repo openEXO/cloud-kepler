@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from collections import OrderedDict
 from PyKE.kepfit import lsqclip
-from utils import extreme
+from utils import extreme_vec as extreme
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

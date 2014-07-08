@@ -84,12 +84,15 @@ def __calc_sr_max(n, nbins, mindur, maxdur, direction, binTime, binFlx, ppb):
 
     for i1 in range(nbins):
         s = 0; r = 0
+        curDepth = binFlx[i1]
 
         for i2 in range(i1, min(i1 + maxdur + 1,nbins)):
             s += binFlx[i2]
             r += ppb[i2]
 
-            if i2 - i1 >= mindur and direction*s >= 0 and r < n:
+            curDepth = extreme(curDepth, binFlx[i2], direction)
+
+            if i2 - i1 >= mindur and direction * curDepth >= 0 and r < n:
                 sr = s**2 / (r * (n - r))
 
                 if sr > best_SR or np.isnan(best_SR):
@@ -100,7 +103,7 @@ def __calc_sr_max(n, nbins, mindur, maxdur, direction, binTime, binFlx, ppb):
                     thisDuration = binTime[i2] - binTime[i1]
 
                     # Update the depth.
-                    thisDepth = extreme(binFlx[i1:i2+1], direction)
+                    thisDepth = curDepth
 
                     # Report the transit midtime in units of days.
                     thisMidTime = (binTime[i2] + binTime[i1]) / 2.

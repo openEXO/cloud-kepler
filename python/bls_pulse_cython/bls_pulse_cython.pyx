@@ -18,7 +18,7 @@ cdef extern int do_bls_pulse_segment_compound(double *time, double *flux, double
 
 cdef extern int do_bin_segment(double *time, double *flux, double *fluxerr, int nbins,
     double segsize, int nsamples, int n, int *ndx, double *stime, double *sflux,
-    double *sfluxerr, double *samples)
+    double *sfluxerr, double *samples, double *start, double *end)
 
 
 @cython.boundscheck(False)
@@ -29,6 +29,7 @@ np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] 
 int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, direction=0):
     cdef double t
     cdef int i, nsamples, nsegments, save
+    cdef np.ndarray[double, ndim=1, mode='c'] segstart, segend
     cdef np.ndarray[double, ndim=1, mode='c'] stime, sflux, sfluxerr, samples
     cdef np.ndarray[double, ndim=2, mode='c'] srsq, depth, duration, midtime
     cdef np.ndarray[double, ndim=2, mode='c'] srsq_dip, depth_dip, duration_dip, midtime_dip
@@ -47,6 +48,10 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, di
     sflux = np.empty((nbins,), dtype='float64')
     sfluxerr = np.empty((nbins,), dtype='float64')
     samples = np.empty((nbins,), dtype='float64')
+
+    # Allocate memory for the segment start and end times.
+    segstart = np.empty((nsegments,), dtype='float64')
+    segend = np.empty((nsegments,), dtype='float64')
 
     if direction == 2:
         srsq_dip = np.empty((nsegments,nbins), dtype='float64')
@@ -71,8 +76,10 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, di
         samples[:] = 0.
 
         # Get the binned data.
-        save = __get_binned_segment(time, flux, fluxerr, nbins, segsize, nsamples, i,
+        save, start, end = __get_binned_segment(time, flux, fluxerr, nbins, segsize, nsamples, i,
             save, stime, sflux, sfluxerr, samples)
+        segstart[i] = start + t
+        segend[i] = end + t
 
         # Perform sigma clipping and polynomial detrending.
         ndx = np.where(np.isfinite(sflux))[0]
@@ -119,25 +126,27 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, di
         midtime_blip += t
         
         # Maximize over the bin axis.
-        ndx1 = np.argmax(srsq_dip, axis=1)
+        ndx1 = np.nanargmax(srsq_dip, axis=1)
         ind1 = np.indices(ndx1.shape)
-        ndx2 = np.argmax(srsq_blip, axis=1)
+        ndx2 = np.nanargmax(srsq_blip, axis=1)
         ind2 = np.indices(ndx2.shape)
 
         return dict(srsq_dip=srsq_dip[ind1,ndx1].ravel(), 
             duration_dip=duration_dip[ind1,ndx1].ravel(), depth_dip=depth_dip[ind1,ndx1].ravel(),
             midtime_dip=midtime_dip[ind1,ndx1].ravel(), srsq_blip=srsq_blip[ind2,ndx2].ravel(),
             duration_blip=duration_blip[ind2,ndx2].ravel(), 
-            depth_blip=depth_blip[ind2,ndx2].ravel(), midtime_blip=midtime_blip[ind2,ndx2].ravel())
+            depth_blip=depth_blip[ind2,ndx2].ravel(), midtime_blip=midtime_blip[ind2,ndx2].ravel(),
+            segstart=segstart, segend=segend)
     else:
         midtime += t
         
         # Maximize over the bin axis.
-        ndx = np.argmax(srsq, axis=1)
+        ndx = np.nanargmax(srsq, axis=1)
         ind = np.indices(ndx.shape)
     
         return dict(srsq=srsq[ind,ndx].ravel(), duration=duration[ind,ndx].ravel(), 
-            depth=depth[ind,ndx].ravel(), midtime=midtime[ind,ndx].ravel())
+            depth=depth[ind,ndx].ravel(), midtime=midtime[ind,ndx].ravel(),
+            segstart=segstart, segend=segend)
 
 
 @cython.boundscheck(False)
@@ -148,9 +157,12 @@ np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] 
 int nbins, double segsize, int nsamples, int n, int ndx, 
 np.ndarray[double, ndim=1, mode='c'] stime, np.ndarray[double, ndim=1, mode='c'] sflux,
 np.ndarray[double, ndim=1, mode='c'] sfluxerr, np.ndarray[double, ndim=1, mode='c'] samples):
+    cdef double start, end
+
     do_bin_segment(&time[0], &flux[0], &fluxerr[0], nbins, segsize, nsamples, n, &ndx, 
-        &stime[0], &sflux[0], &sfluxerr[0], &samples[0])
-    return ndx
+        &stime[0], &sflux[0], &sfluxerr[0], &samples[0], &start, &end)
+
+    return ndx, start, end
 
 
 @cython.boundscheck(False)
