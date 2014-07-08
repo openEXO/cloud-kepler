@@ -15,7 +15,7 @@ import mock, sys, os
 
 MOCK_MODULES = ['numpy', 'scipy', 'scipy.linalg', 'scipy.interpolate', 'scipy.ndimage',
     'scipy.ndimage.interpolation', 'scipy.optimize', 'pandas', 'matplotlib',
-    'matplotlib.pyplot', 'pyfits', 'pylab', 'bls_pulse_cython']
+    'matplotlib.pyplot', 'pyfits', 'pylab', 'bls_pulse_cython', 'configparser']
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 
