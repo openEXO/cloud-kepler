@@ -1,31 +1,16 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-############################################################################################
-## Place import commands and logging options.
-############################################################################################
 import sys
-import logging
-import random
-import math
-import base64
-import json
-from zlib import compress
-import cStringIO
-import sim_lc.bls_vec_simulator as bls_vec_simulator
-from bls_pulse import main as bls_pulse
+import numpy as np
+from simulate import simulate_box_lightcurve
+from bls_pulse_python import bls_pulse as bls_pulse_python
+from bls_pulse_vec import bls_pulse as bls_pulse_vec
+from bls_pulse_cython import bls_pulse as bls_pulse_cython
 from argparse import ArgumentParser
 
-import numpy as np
-import matplotlib.pyplot as matplot
-import matplotlib.transforms
-import ipdb
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-############################################################################################
-
-
-def is_straddling(tmid, tdur, segsize, lc):
+def is_straddling(tmid, tdur, segsize, time):
     '''
     Returns true if, given a time baseline, a segment break occurs inside a transit.
 
@@ -33,12 +18,8 @@ def is_straddling(tmid, tdur, segsize, lc):
       tmid -- the midtransit time
       tdur -- the duration of the transit
       segsize -- the length of a segment
-      lc -- the lightcurve data (for extracting the time); this function assumes that the
-        first segment occurs at the minimum time
+      lc -- the lightcurve time baseline
     '''
-    # Extract the time from the DataFrame.
-    time = np.array(lc.index.values, dtype='float64')
-
     # The segment break may fall before or after midtransit; calculate those times.
     n = np.floor((tmid - np.amin(time)) / segsize)
     before = segsize * float(n)
@@ -51,142 +32,125 @@ def is_straddling(tmid, tdur, segsize, lc):
         return False
 
 
-############################################################################################
-## This is the main routine.
-############################################################################################
-def main(err_on_fail=True, allow_straddling=True):
+def main(err_on_fail=True, allow_straddling=True, ofile=None, mode='python'):
+    if ofile is not None:
+        ofile.write('#\tMeas. mid.\tAct. mid.\tMeas. dpth.\tAct. dpth.\tMeas. dur.\tAct. dur\n')
 
-    ## Generate repeatable, random tranist parameters selected from a uniform distribution for testing purposes.
+    # Define absolute/relative tolerances.
+    midtime_atol = 0.1
+    duration_rtol = 0.1
+    depth_rtol = 0.1
 
-    ## This is the value of 1 minute in days (at least roughly).
-    minute_in_days = 1. / (60. * 24.)
+    # How many lightcurves to simulate.
+    n = 10
 
-    ## --- The following parameters are for the bls_pulse input ---
-    ## What do you want to use for a segment size in the bls_pulse algorithm?
-    segment_size = 2 ## in days.
-    min_duration = 0.01 ## in days.
-    max_duration = 0.5 ## in days.
-    n_bins_blspulse = 1000
-    ## ------------------------------------------------------------
+    # Other parameters.
+    minutes_per_day = 24. * 60.
+    signal_to_noise, baseline = (10000., 90.)
+    nsamples = np.ceil(baseline * minutes_per_day)
+    segsize, mindur, maxdur, nbins = (2., 0.01, 0.5, 1000)
 
-    ## How many total lightcurves to simulate?
-    n_lcs = 10
+    # To make it deterministic, seed the PRNG.
+    np.random.seed(4)
 
-    ## Define the precision level that counts as a success.  The mid-transit times, durations, and depths must match the simulated lightcurve's transits to within this precision percentage.
-    midtime_precision_threshold = 0.1 ## +/- 0.1 days for now.
-    duration_rel_precision_threshold = 0.1 ## +/- 10% (relative precision) allowed for now.
-    depth_rel_precision_threshold = 0.1 ## +/- 10% (relative precision) allowed for now.
+    period_list = np.random.uniform(segsize, 30., size=n)           # days
+    duration_list = np.random.uniform(1. / 24., 5. / 24., size=n)   # days
+    depth_list = np.random.uniform(-0.01, -0.5, size=n)
+    phase_list = np.random.uniform(0., 1., size=n)
 
-    ## How long of a baseline do you want to use (in days)?
-    baseline = 90.
+    for i, p, du, dp, ph in zip(np.arange(n), period_list, duration_list, depth_list,
+    phase_list):
+        # Print a status update message.
+        print 'TEST_BLS_PULSE: Test case', i + 1, 'of', n, '...'
 
-    ## Determine the number of samples.  We want 1 min. cadence, so the number of samples is the baseline in *minutes* such that each sample is 1 minute in duration.
-    n_samples = math.ceil(baseline / minute_in_days)
+        # Simulate the lightcurve.
+        time, flux, fluxerr, duration, depth, midtime = simulate_box_lightcurve(p, du,
+            dp, ph, signal_to_noise, nsamples, baseline)
 
-    ## What signal-to-noise should the lightcurves have (we want these nearly perfect for unit testing, so use a high value).
-    signal_to_noise = 10000.
+        if mode == 'python':
+            out = bls_pulse_python(time, flux, fluxerr, nbins, segsize, mindur, maxdur,
+                detrend_order=0, direction=0)
+        elif mode == 'vec':
+            out = bls_pulse_vec(time, flux, fluxerr, nbins, segsize, mindur, maxdur,
+                detrend_order=0, direction=0)
+        elif mode == 'cython':
+            out = bls_pulse_cython(time, flux, fluxerr, nbins, segsize, mindur, maxdur,
+                detrend_order=0, direction=0)
+        else:
+            raise ValueError('Invalid test mode: %s' % mode)
 
-    ## At what phase should we start the transits?  Let's randomize this too between 0. and 1.
-    phase_range = (0.0,1.0)
+        bls_du = out['duration'].ravel()
+        bls_dp = out['depth'].ravel()
+        bls_mid = out['midtime'].ravel()
 
-    ## What is the period range?  These are in days.
-    per_range = (0.5, 30.)
+        for j in xrange(len(midtime)):
+            ndx = np.nanargmin(np.absolute(midtime[j] - bls_mid))
 
-    ## What is the depth range?  These are in percentages.
-    depth_range = (0.01, 0.5)
+            if ofile:
+                ofile.write('%d\t%f\t%f\t%f\t%f\t%f\t%f\n' % (j, bls_mid[ndx], midtime[j],
+                    bls_dp[ndx], depth[j], bls_du[ndx], duration[j]))
 
-    ## What is the transit duration range?  These are in hours.
-    duration_range = (1., 5.)
+            if is_straddling(midtime[j], duration[j], segsize, time):
+                print '    Transit %02d.....PASS (straddling)' % j
+                continue
 
-    ## Start the random seed variable so the random sampling is repeatable.
-    random.seed(4)
-
-    ## Create random distribution of periods, depths, and durations.
-    starid_list = [str(x+1).zfill(2) for x in range(n_lcs)]
-    period_list = [random.uniform(per_range[0], per_range[1]) for x in range(n_lcs)]
-    depth_list = [random.uniform(depth_range[0], depth_range[1]) for x in range(n_lcs)]
-    duration_list = [random.uniform(duration_range[0], duration_range[1]) for x in range(n_lcs)]
-    phase_list = [random.uniform(phase_range[0], phase_range[1]) for x in range(n_lcs)]
-
-    ## Convert the duration (in hours) into transit duration ratios for use in "simulate_box_lightcurve".
-    ## ratio = duration (hours) / (24. * period (days))
-    duration_ratio_list = [x/(24.*y) for x,y in zip(duration_list, period_list)]
-
-    ## Andrea Zonca's "simulate_box_lightcurve" takes in the following parameters:
-    ##  period (days)
-    ##  transit duration (as a ratio of the transit duration to the orbital period)
-    ##  transit depth (in normalized units)
-    ##  phase shift
-    ##  signal-to-noise (ratio of transit depth to standard deviation of the white noise)
-    ##  n_samples (the number of fixed time samples during the time span)
-    ##  time_span (the total time baseline of the simulated lightcurve, in days)
-
-    ## Create the simulated lightcurves.
-    for i, p, d, dr, ph in zip(starid_list, period_list, depth_list, duration_ratio_list, phase_list):
-        ## Print out status update.
-        print "TEST_BLS_PULSE: Test case # " + str(i) + "/" + str(n_lcs) + "..."
-        this_lc = bls_vec_simulator.bls_vec_simulator(p, dr, d, ph, signal_to_noise, n_samples, baseline)
-
-        ## Create a list of lists (a list of [time,flux,fluxerr]) to encode and pass onto bls_pulse.
-        this_lc_listoflists = [[x,y,z] for x,y,z in zip(this_lc['lc'].index,this_lc['lc'].flux,this_lc['lc'].flux_error)]
-
-        ## Create a lightcurve string object as expected by bls_pulse.
-        lc_string = "\t".join( ['TestStar_'+i, '0', base64.b64encode(compress(json.dumps(this_lc_listoflists))) ] )
-        lc_string = cStringIO.StringIO(lc_string)
-
-        ## Run the lightcurve through bls_pulse.
-        these_srs = bls_pulse(segment_size, lc_string, min_duration, max_duration, n_bins_blspulse, -1, "none")
-
-        ## Compare to see if each of the simulated transits is found by BLS_PULSE.
-        for tnum,ttime,tdepth,tduration in zip(range(len(this_lc['transit_times'])), this_lc['transit_times'], this_lc['transit_depths'], this_lc['transit_durations']):
-            ## Find the index of the closest segment by comparing the times.
             try:
-                closest_index = np.nanargmin(abs(ttime-these_srs["midtimes"].values))
-            except ValueError:
-                print "*** Warning in TEST_BLS_PULSE: All segments had no events.  Unable to run pass/fail test, defaulting to FAIL.."
-                print "   Transit {0: <3d}...FAIL".format(tnum)
+                diff_midtime = np.absolute(midtime[j] - bls_mid[ndx])
+                diff_depth = np.absolute(depth[j] - bls_dp[ndx])
+                diff_duration = np.absolute(duration[j] - bls_du[ndx])
 
+                errstring = '    Transit %02d.....FAIL\n' % j
+
+                if diff_midtime > midtime_atol:
+                    errstring += 'MIDTIME: Expected ' + str(midtime[j]) + ', measured ' + \
+                        str(bls_mid[ndx]) + ', diff. ' + str(diff_midtime) + \
+                        ', allowed diff. ' + str(midtime_atol)
+                    print errstring
+                    raise RuntimeError
+                elif diff_depth / depth[j] > depth_rtol:
+                    errstring += 'DEPTH: Expected ' + str(depth[j]) + ', measured ' + \
+                        str(bls_dp[ndx]) + ', rel. diff. ' + \
+                        str(diff_depth / depth[j] * 100) + '%, allowed rel. diff. ' + \
+                        str(depth_rtol * 100) + '%'
+                    print errstring
+                    raise RuntimeError
+                elif diff_duration / duration[j] > duration_rtol:
+                    errstring += 'DURATION: Expected ' + str(duration[j]) + ', measured ' + \
+                        str(bls_du[ndx]) + ', rel. diff. ' + \
+                        str(diff_duration / duration[j] * 100) + '%, allowed diff. ' + \
+                        str(duration_rtol * 100) + '%'
+                    print errstring
+                    raise RuntimeError
+                else:
+                    # All values within relative or absolute tolerances.
+                    print '    Transit %02d.....PASS' % j
+            except RuntimeError:
                 if err_on_fail:
                     sys.exit(1)
-            else:
-                ## Test pass/fail criteria using the closest segment event.
-                if abs(ttime-these_srs["midtimes"].values[closest_index]) <= midtime_precision_threshold and abs(tdepth-these_srs["depths"].values[closest_index])/tdepth <= depth_rel_precision_threshold and abs(tduration-these_srs["durations"].values[closest_index])/tduration <= duration_rel_precision_threshold:
-                    print "   Transit {0: <3d}.....PASS".format(tnum)
-                elif allow_straddling and is_straddling(ttime, tduration / 24., segment_size,
-                this_lc['lc']):
-                    print "   Transit {0: <3d}.....PASS (straddling)".format(tnum)
-                else:
-                    err_string_to_add = ""
-                    err_string_line2 = ""
-                    if abs(ttime-these_srs["midtimes"].values[closest_index]) >= midtime_precision_threshold:
-                        err_string_to_add += " (timestamp)"
-                        err_string_line2 += "\n\tTIMESTAMP: Expected: " + str(ttime) + " Measured: " + str(these_srs["midtimes"].values[closest_index]) + " Diff: " + str(abs(ttime-these_srs["midtimes"].values[closest_index])) + " Allowed Diff: " + str(midtime_precision_threshold)
-                    if abs(tdepth-these_srs["depths"].values[closest_index])/tdepth >= depth_rel_precision_threshold:
-                        err_string_to_add += " (depth)"
-                        err_string_line2 += "\n\tDEPTH: Expected: " + str(tdepth) + " Measured: " + str(these_srs["depths"].values[closest_index]) + " Rel. Diff: " + str(abs(tdepth-these_srs["depths"].values[closest_index])/tdepth*100.) + "% Allowed Rel. Diff: " + str(depth_rel_precision_threshold*100.)+"%"
-                    if abs(tduration-these_srs["durations"].values[closest_index])/tduration >= duration_rel_precision_threshold:
-                        err_string_to_add += " (duration)"
-                        err_string_line2 += "\n\tDURATION: Expected: " + str(tduration) + " Measured: " + str(these_srs["durations"].values[closest_index]) + " Rel. Diff: " + str(abs(tduration-these_srs["durations"].values[closest_index])/tduration*100.) + "% Allowed Rel. Diff: " + str(duration_rel_precision_threshold*100.)+"%"
-                    print "   Transit {0: <3d}...FAIL".format(tnum) + err_string_to_add
-                    print err_string_line2
 
-                    if err_on_fail:
-                        sys.exit(1)
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    logger.setLevel(logging.INFO)
-
+if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-e', help='Throw an error if a test fails?', default=1,
         dest='err', type=int)
     parser.add_argument('-s', help='Allow straddling transits to pass?', default=1,
         dest='straddling', type=int)
+    parser.add_argument('-o', help='Specify an output file', default=None,
+        dest='ofile', type=str)
+    parser.add_argument('-m', '--mode', help='Algorithm to test', default='python',
+        dest='mode', type=str)
     args = parser.parse_args()
 
+    print 'Test mode:', args.mode
     print 'Errors on fail:', bool(args.err)
     print 'Allow straddling to pass:', bool(args.straddling)
     print
 
-    main(err_on_fail=args.err, allow_straddling=args.straddling)
-############################################################################################
+    if args.ofile is not None:
+        f = open(args.ofile, 'w')
+    else:
+        f = None
+
+    main(err_on_fail=args.err, allow_straddling=args.straddling, ofile=f, mode=args.mode)
+
+    if f is not None:
+        f.close()

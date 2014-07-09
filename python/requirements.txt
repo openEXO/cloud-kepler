@@ -1,4 +1,7 @@
 numpy
-ipdb
 scipy
 matplotlib
+cython
+pyfits
+sphinx
+
