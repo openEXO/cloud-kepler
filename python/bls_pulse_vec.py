@@ -64,7 +64,7 @@ def __compute_signal_residual(binned_segment, matrix, duration, n_bins_min_durat
         return pd.Series(dict(phases=i1,
             durations=(binned_segment.time.values[i2]-binned_segment.time.values[i1]),
             signal_residuals=sr[SR_index],
-            depths=extreme(binned_segment.flux[i1:i2+1].values, direction),
+            depths=extreme(binned_segment.flux[i1:i2+1].values),
             midtimes=0.5*(binned_segment.time.values[i1]+binned_segment.time.values[i2])))
     else:
         return pd.Series(dict(phases=np.nan, durations=np.nan, signal_residuals=np.nan,

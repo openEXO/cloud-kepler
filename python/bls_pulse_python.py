@@ -90,9 +90,10 @@ def __calc_sr_max(n, nbins, mindur, maxdur, direction, binTime, binFlx, ppb):
             s += binFlx[i2]
             r += ppb[i2]
 
-            curDepth = extreme(curDepth, binFlx[i2], direction)
+            curDepth = extreme(curDepth, binFlx[i2])
 
-            if i2 - i1 >= mindur and direction * curDepth >= 0 and r < n:
+            if i2 - i1 >= mindur and direction * curDepth >= 0 and \
+            direction * s >= 0 and r < n:
                 sr = s**2 / (r * (n - r))
 
                 if sr > best_SR or np.isnan(best_SR):

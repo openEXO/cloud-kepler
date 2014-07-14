@@ -7,17 +7,10 @@ import matplotlib.patches as patches
 from detrend import polyfit
 from numpy.polynomial import polynomial as poly
 from argparse import ArgumentParser
-from utils import read_mapper_output, read_pipeline_output
+from utils import boxcar, read_mapper_output, read_pipeline_output, bin_segment_slow
 
 patch = None
-
-
-def __boxcar(time, duration, depth, midtime):
-    ndx = np.where((time >= midtime - duration / 2.) & (time <= midtime + duration / 2.))
-    flux = np.zeros_like(time)
-    flux[ndx] += depth
-
-    return flux
+nbins = 1000
 
 
 def __onclick(event, ax, kdtree, segstart, segend, duration_dip, depth_dip,
@@ -39,37 +32,55 @@ def __onclick(event, ax, kdtree, segstart, segend, duration_dip, depth_dip,
         patch.remove()
 
     # Draw a circle around the selected point.
-    patch = patches.Circle((depth_dip[ndx], depth_blip[ndx]), max_dist, color='red',
-        fill=False)
+    patch = patches.Circle((depth_dip[ndx], depth_blip[ndx]),
+        max_dist, color='red', fill=False)
     ax.add_patch(patch)
     plt.draw()
 
-    # Plot this segment of the light curve.
+    # Clip the current segment and filter out NaN values.
+    ndx2 = np.where((np.isfinite(flux)) & (time >= segstart[ndx]) & (time < segend[ndx]))
+    t = time[ndx2]
+    f = flux[ndx2]
+
+    # Bin the requested segment and detrend it.
+    t_binned, f_binned, err_binned = bin_segment_slow(time, flux, fluxerr, nbins,
+        segstart[ndx], segend[ndx])
+
+    ndx3 = np.where(np.isfinite(f_binned))
+    m = (segstart[ndx] + segend[ndx]) / 2.
+    coeffs = polyfit.polyfit(t_binned[ndx3] - m, f_binned[ndx3], err_binned[ndx3], 3)
+    trend = poly.polyval(t_binned - m, coeffs)
+    f_detrend = f_binned / trend
+    f_detrend -= 1.
+
+    # Set up the plotting environment.
     fig2 = plt.figure()
     ax1 = fig2.add_subplot(211)
     ax2 = fig2.add_subplot(212)
 
-    # Detrend the requested segment.
-    ndx2 = np.where((np.isfinite(flux)) & (time >= segstart[ndx]) & (time < segend[ndx]))
-    t = time[ndx2]
-    f = flux[ndx2]
-    coeffs = polyfit.polyfit(t, f, fluxerr[ndx2], 3)
-    trend = poly.polyval(t, coeffs)
-    f_detrend = f / trend
-    f_detrend -= 1.
+    # Plot the original time and flux, binned time and flux, and trend.
+    ax1.plot(t, f, label='Raw Kepler data')
+    ax1.scatter(t_binned, f_binned, label='Binned data')
+    ax1.plot(t_binned[ndx3], trend[ndx3], ls='--', color='black', label='Trend')
+    ax1.legend(loc='best')
 
-    # Plot the original time and flux and the detrended time and flux.
-    ax1.plot(t, f)
-    ax1.plot(t, trend, ls='--', color='black')
-    ax2.plot(t, f_detrend)
-    ax2.plot(t, __boxcar(t, duration_dip[ndx], -depth_dip[ndx], midtime_dip[ndx]))
-    ax2.plot(t, __boxcar(t, duration_blip[ndx], depth_blip[ndx], midtime_blip[ndx]))
+    # Plot the detrended, binned time and flux and best dip/blip.
+    ax2.scatter(t_binned, f_detrend, label='Detrended data')
+    ax2.plot(t, boxcar(t, duration_dip[ndx], -depth_dip[ndx], midtime_dip[ndx]),
+        label='Best dip', color='green')
+    plt.axvline(midtime_dip[ndx], color='green', ls='--')
+    ax2.plot(t, boxcar(t, duration_blip[ndx], depth_blip[ndx], midtime_blip[ndx]),
+        label='Best blip', color='red')
+    plt.axvline(midtime_blip[ndx], color='red', ls='--')
+    ax2.legend(loc='best')
 
     ax1.set_xlim(segstart[ndx], segend[ndx])
     ax2.set_xlim(segstart[ndx], segend[ndx])
     ax2.set_xlabel('Time (days)')
     ax1.set_ylabel('Flux')
     ax2.set_ylabel('Flux')
+
+    plt.tight_layout()
     plt.show()
 
 
@@ -110,8 +121,9 @@ def main(file_data, file_pipeline):
         ax = fig.add_subplot(111)
         ax.set_aspect('equal')
         cid = fig.canvas.mpl_connect('button_press_event',
-            lambda e: __onclick(e, ax, kdtree, segstart, segend, duration_dip, depth_dip,
-                midtime_dip, duration_blip, depth_blip, midtime_blip, time, flux, fluxerr))
+            lambda e: __onclick(e, ax, kdtree, segstart, segend, duration_dip,
+                depth_dip, midtime_dip, duration_blip, depth_blip, midtime_blip,
+                time, flux, fluxerr))
 
         # Plot the dip and blip depths.
         ax.scatter(depth_dip, depth_blip, marker='x', color='k')
@@ -130,6 +142,7 @@ def main(file_data, file_pipeline):
         ax.set_ylabel('Blip depth')
 
         # Show the plot; halts execution until the user exits.
+        plt.tight_layout()
         plt.show()
 
     f1.close()

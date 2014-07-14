@@ -11,6 +11,36 @@ import zlib
 import numpy as np
 
 
+def boxcar(time, duration, depth, midtime):
+    '''
+    General function for producing a boxcar signal; useful for plotting.
+    '''
+    ndx = np.where((time >= midtime - duration / 2.) & (time <= midtime + duration / 2.))
+    flux = np.zeros_like(time)
+    flux[ndx] += depth
+
+    return flux
+
+
+def bin_segment_slow(time, flux, fluxerr, nbins, segstart, segend):
+    '''
+    Returns a binned segment. This should not be used in the pipeline! It is
+    useful for plotting individual segments and debugging.
+
+    See http://stackoverflow.com/questions/6163334/binning-data-in-python-with-scipy-numpy
+    '''
+    bin_slices = np.linspace(segstart, segend, nbins + 1)
+
+    ndx = np.where((time >= segstart) & (time < segend))
+    bin_memberships = np.digitize(time[ndx], bin_slices)
+    binned_times = [time[ndx][bin_memberships == i].mean() for i in xrange(1, len(bin_slices))]
+    binned_fluxes = [flux[ndx][bin_memberships == i].mean() for i in xrange(1, len(bin_slices))]
+    binned_errors = [fluxerr[ndx][bin_memberships == i].mean() for i in xrange(1, len(bin_slices))]
+
+    return np.array(binned_times, dtype='float64'), np.array(binned_fluxes, dtype='float64'), \
+        np.array(binned_errors, dtype='float64')
+
+
 def read_mapper_output(f, separator='\t', uri=False):
     '''
     Reads data from the input file, assuming the given separator, in base64 format;
@@ -106,23 +136,17 @@ def decode_array(s):
     return json.loads(zlib.decompress(base64.b64decode(s)))
 
 
-def extreme(a, b, direction):
+def extreme(a, b):
     '''
 
     '''
-    return (a if (direction * a > direction * b) else b) if direction \
-        else (a if (abs(a) > abs(b)) else b)
+    return a if (abs(a) > abs(b)) else b
 
 
-def extreme_vec(arr, direction):
+def extreme_vec(arr):
     '''
 
     '''
-    if direction == 1:
-        return np.nanmax(arr)
-    elif direction == -1:
-        return np.nanmin(arr)
-    else:
-        ndx = np.nanargmax(np.absolute(arr))
-        return arr[ndx]
+    ndx = np.nanargmax(np.absolute(arr))
+    return arr[ndx]
 

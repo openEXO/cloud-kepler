@@ -16,12 +16,16 @@ install:
   - conda install --yes python=$TRAVIS_PYTHON_VERSION atlas numpy scipy matplotlib dateutil pip pandas=0.13.0
   - pip install -r python/requirements.txt
   - pip install openpyxl==1.8.6
- 
+
 # Run test
 script:
   - cd python
   - make
   - python -m unittests.test_get_data
-  - python -m unittests.test_bls_pulse --mode python
-  - python -m unittests.test_bls_pulse --mode vec
-  - python -m unittests.test_bls_pulse --mode cython
+  - python -m unittests.test_bls_pulse --mode python -o python.out
+  - python -m unittests.test_bls_pulse --mode vec -o vec.out
+  - python -m unittests.test_bls_pulse --mode cython -o cython.out
+  - diff python.out cython.out
+  - diff vec.out cython.out
+  - python -m unittests.test_bls_compound
+
