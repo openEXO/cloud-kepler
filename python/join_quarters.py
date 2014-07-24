@@ -8,6 +8,7 @@ From http://www.michael-noll.com/tutorials/writing-an-hadoop-mapreduce-program-i
 
 import sys
 import string
+import random
 import logging
 import numpy as np
 from itertools import groupby
