@@ -4,4 +4,5 @@ matplotlib
 cython
 pyfits
 sphinx
+scikit-learn
 

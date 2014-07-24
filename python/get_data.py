@@ -9,20 +9,18 @@ passed along to other modules directly through memory.
 Reference: http://www.michael-noll.com/tutorials/writing-an-hadoop-mapreduce-program-in-python/
 '''
 
-import sys
 import os
-import logging
+import sys
 import urllib2
 import tempfile
 import pyfits
 import numpy as np
 from contextlib import contextmanager
 from argparse import ArgumentParser
-from utils import encode_array
+from utils import encode_array, setup_logging, handle_exception
 
 # Basic logging configuration.
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger = setup_logging(__file__)
 
 
 ############################################################################################
@@ -125,7 +123,7 @@ class MASTDataDownloader(object):
                     fits_stream = self.__download_file_serialize(p)
                     tempfile, stream = self.__process_fits_object(fits_stream)
                 except RuntimeError:
-                    logging.error('Cannot download: ' + p)
+                    logger.error('Cannot download: ' + p)
                     continue
 
                 if printout:
@@ -146,7 +144,7 @@ class MASTDataDownloader(object):
         try:
             response = urllib2.urlopen(uri)
             fits_stream = response.read()
-        except:
+        except IOError:
             raise RuntimeError
 
         return fits_stream
@@ -232,7 +230,7 @@ class DiskDataLoader(object):
                 try:
                     stream = self.__read_fits_file(p, kepler_id)
                 except RuntimeError:
-                    logging.error("Cannot read: " + p)
+                    logger.error("Cannot read: " + p)
                     continue
 
                 if printout:
@@ -269,7 +267,7 @@ class DiskDataLoader(object):
         '''
         try:
             hdulist = pyfits.open(input_fits_file)
-        except:
+        except IOError:
             raise RuntimeError
 
         # Otherwise we've successfully opened the FITS file, so read the data, close the FITS
@@ -337,6 +335,9 @@ if __name__ == "__main__":
             "<root>/<nnnn>/<nnnnnnnnn>/.  Defaults to the current working directory.")
     args = parser.parse_args()
 
-    # Note: The trailing separator is not necessary anymore because of os.path.join modification
-    main(args.source, os.path.normpath(args.datapath))
+    try:
+        main(args.source, os.path.normpath(args.datapath))
+    except:
+        handle_exception(sys.exc_info())
+        sys.exit(1)
 

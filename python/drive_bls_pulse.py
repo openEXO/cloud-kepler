@@ -4,18 +4,18 @@
 import sys
 import pstats
 import cProfile
-import logging
 import numpy as np
-from utils import read_mapper_output, encode_array
-from bls_pulse_python import bls_pulse as bls_pulse_python
-from bls_pulse_vec import bls_pulse as bls_pulse_vec
-from bls_pulse_cython import bls_pulse as bls_pulse_cython
+import matplotlib.pyplot as plt
+from clean_signal import clean_signal
+from utils import read_mapper_output, encode_array, setup_logging, handle_exception
+from bls_pulse_cython import bls_pulse, bin_and_detrend
 from argparse import ArgumentParser
-from configparser import SafeConfigParser, NoOptionError
+from configparser import ConfigParser, NoOptionError
 
 # Basic logging configuration.
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger = setup_logging(__file__)
+
+np.seterr(all='ignore')
 
 
 def __init_parser(defaults):
@@ -120,7 +120,7 @@ def main():
         profile = args.profile
     else:
         # Configuration file was given; read in that instead.
-        cp = SafeConfigParser(defaults)
+        cp = ConfigParser(defaults)
         cp.read(args.config)
 
         segment = cp.getfloat('DEFAULT', 'segment')
@@ -148,38 +148,40 @@ def main():
             pr = cProfile.Profile()
             pr.enable()
 
-        if mode == 'python':
-            raise NotImplementedError
-            out = bls_pulse_python(time, flux, fluxerr, nbins, segment, mindur, maxdur,
-                direction=direction)
-        elif mode == 'vec':
-            raise NotImplementedError
-            out = bls_pulse_vec(time, flux, fluxerr, nbins, segment, mindur, maxdur,
-                direction=direction)
-        elif mode == 'cython':
-            out = bls_pulse_cython(time, flux, fluxerr, nbins, segment, mindur, maxdur,
-                direction=direction)
-        else:
-            raise ValueError('Invalid mode: %s' % mode)
+        while True:
+            # Do ALL detrending and binning here. The main algorithm function is now
+            # separate from this functionality.
+            dtime, dflux, dfluxerr, samples, segstart, segend  = \
+                bin_and_detrend(time, flux, fluxerr, nbins, segment, detrend_order=3)
+
+            out = bls_pulse(dtime, dflux, dfluxerr, samples, nbins, segment,
+                mindur, maxdur, direction=direction)
+
+            if direction == 2:
+                srsq_dip = out['srsq_dip']
+                duration_dip = out['duration_dip']
+                depth_dip = out['depth_dip']
+                midtime_dip = out['midtime_dip']
+                srsq_blip = out['srsq_blip']
+                duration_blip = out['duration_blip']
+                depth_blip = out['depth_blip']
+                midtime_blip = out['midtime_blip']
+
+                try:
+                    clean_signal(time, flux, dfluxerr, out)
+                except RuntimeError:
+                    break
+            else:
+                # Cleaning iterations currently won't work unless direction is 2.
+                break
 
         if profile:
-            # Turn off profiling.
+            # Turn off profiling and print results to STDERR.
             pr.disable()
             ps = pstats.Stats(pr, stream=sys.stderr).sort_stats('time')
             ps.print_stats()
 
         if direction == 2:
-            srsq_dip = out['srsq_dip']
-            duration_dip = out['duration_dip']
-            depth_dip = out['depth_dip']
-            midtime_dip = out['midtime_dip']
-            srsq_blip = out['srsq_blip']
-            duration_blip = out['duration_blip']
-            depth_blip = out['depth_blip']
-            midtime_blip = out['midtime_blip']
-            segstart = out['segstart']
-            segend = out['segend']
-
             # Print output.
             if fmt == 'encoded':
                 print "\t".join([k, q, encode_array(segstart), encode_array(segend), encode_array(srsq_dip),
@@ -230,5 +232,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except:
+        handle_exception(sys.exc_info())
+        sys.exit(1)
 

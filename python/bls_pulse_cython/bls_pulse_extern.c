@@ -1,6 +1,12 @@
 #include <math.h>
 #include <stdio.h>
 
+/* After this number of gap points (NaNs), force the current segment to
+ * end at the last non-gap point and start a new one at the next non-gap
+ * point. Should help with detrending. */
+#define MAXGAP          (5)
+
+#define false           (0)
 #define true            (1)
 
 #define min(a,b)        (a < b ? a : b)
@@ -129,7 +135,7 @@ int do_bls_pulse_segment(double *time, double *flux, double *fluxerr, double *sa
             srsqnew = (s * s) / (r * (nn - r));
 
             if ((srsqnew > srsqmax) && (direction * d >= 0) && (direction * s >= 0)
-                && (r < nn))
+                && (r != nn))
             {
                 /* We found a better event than previously; overwrite the "best"
                  * parameters. */
@@ -217,7 +223,7 @@ int do_bls_pulse_segment_compound(double *time, double *flux, double *fluxerr, d
 
             srsqnew = (s * s) / (r * (nn - r));
 
-            if ((srsqnew > srsqmax_dip) && (d_dip < 0.) && (s < 0.))
+            if ((srsqnew > srsqmax_dip) && (d_dip < 0.) && (s < 0.) && (r != nn))
             {
                 /* We found a better dip event than previously; overwrite the "best"
                  * parameters. */
@@ -226,7 +232,7 @@ int do_bls_pulse_segment_compound(double *time, double *flux, double *fluxerr, d
                 bestdepth_dip = d_dip;       /* this is an absolute level, not relative */
             }
 
-            if ((srsqnew > srsqmax_blip) && (d_blip > 0.) && (s > 0.))
+            if ((srsqnew > srsqmax_blip) && (d_blip > 0.) && (s > 0.) && (r != nn))
             {
                 /* We found a better blip event than previously; overwrite the "best"
                  * parameters. */

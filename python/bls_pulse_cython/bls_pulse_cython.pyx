@@ -27,11 +27,10 @@ cdef extern int do_bin_segment(double *time, double *flux, double *fluxerr, int 
 @cython.profile(True)
 def bls_pulse(np.ndarray[double, ndim=1, mode='c'] time,
 np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] fluxerr,
-int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, direction=0):
-    cdef double t, m, start, end
-    cdef int i, nsamples, nsegments, save
-    cdef np.ndarray[double, ndim=1, mode='c'] segstart, segend
-    cdef np.ndarray[double, ndim=1, mode='c'] stime, sflux, sfluxerr, samples
+np.ndarray[double, ndim=1, mode='c'] samples, int nbins, double segsize, double mindur,
+double maxdur, int detrend_order=3, direction=0):
+    cdef int i, nsamples, nsegments
+    cdef np.ndarray[double, ndim=1, mode='c'] stime, sflux, sfluxerr, ssamples
     cdef np.ndarray[double, ndim=2, mode='c'] srsq, depth, duration, midtime
     cdef np.ndarray[double, ndim=2, mode='c'] srsq_dip, depth_dip, duration_dip, midtime_dip
     cdef np.ndarray[double, ndim=2, mode='c'] srsq_blip, depth_blip, duration_blip, midtime_blip
@@ -42,17 +41,6 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, di
 
     nsamples = np.size(time)
     nsegments = np.floor(np.nanmax(time) / segsize) + 1
-    save = 0
-
-    # This memory is only allocated once and will be reused.
-    stime = np.empty((nbins,), dtype='float64')
-    sflux = np.empty((nbins,), dtype='float64')
-    sfluxerr = np.empty((nbins,), dtype='float64')
-    samples = np.empty((nbins,), dtype='float64')
-
-    # Allocate memory for the segment start and end times.
-    segstart = np.empty((nsegments,), dtype='float64')
-    segend = np.empty((nsegments,), dtype='float64')
 
     if direction == 2:
         srsq_dip = np.empty((nsegments,nbins), dtype='float64')
@@ -70,54 +58,40 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, di
         midtime = np.empty((nsegments,nbins), dtype='float64')
 
     for i in xrange(nsegments):
-        # Initialize these to zero for each new segment.
-        stime[:] = 0.
-        sflux[:] = 0.
-        sfluxerr[:] = 0.
-        samples[:] = 0.
+        # Set up a view for each segment.
+        ndx = i * nbins
+        stime = time[ndx:ndx+nbins]
+        sflux = flux[ndx:ndx+nbins]
+        sfluxerr = fluxerr[ndx:ndx+nbins]
+        ssamples = samples[ndx:ndx+nbins]
 
-        # Get the binned data.
-        save, start, end = __get_binned_segment(time, flux, fluxerr, nbins, segsize, nsamples, i,
-            save, stime, sflux, sfluxerr, samples)
-        segstart[i] = start + t
-        segend[i] = end + t
-
-        # Perform sigma clipping and polynomial detrending.
-        ndx = np.where(np.isfinite(sflux))[0]
-
-        if len(ndx) <= detrend_order + 1 and detrend_order != 0:
-            # There aren't enough points to do any detrending; go on to the
+        #if flag[i] == 1:
+            # There weren't enough points to do any detrending; go on to the
             # next segment.
-            if direction == 2:
-                srsq_dip[i,:] = 0.
-                depth_dip[i,:] = np.nan
-                duration_dip[i,:] = np.nan
-                midtime_dip[i,:] = np.nan
-                srsq_blip[i,:] = 0.
-                depth_blip[i,:] = np.nan
-                duration_blip[i,:] = np.nan
-                midtime_blip[i,:] = np.nan
-            else:
-                srsq[i,:] = 0.
-                depth[i,:] = np.nan
-                duration[i,:] = np.nan
-                midtime[i,:] = np.nan
+        #    if direction == 2:
+        #        srsq_dip[i,:] = 0.
+        #        depth_dip[i,:] = np.nan
+        #        duration_dip[i,:] = np.nan
+        #        midtime_dip[i,:] = np.nan
+        #        srsq_blip[i,:] = 0.
+        #        depth_blip[i,:] = np.nan
+        #        duration_blip[i,:] = np.nan
+        #        midtime_blip[i,:] = np.nan
+        #    else:
+        #        srsq[i,:] = 0.
+        #        depth[i,:] = np.nan
+        #        duration[i,:] = np.nan
+        #        midtime[i,:] = np.nan
 
-            continue
-
-        if detrend_order != 0:
-            m = (start + end) / 2.
-            coeffs = polyfit.polyfit(stime[ndx] - m, sflux[ndx], sfluxerr[ndx], detrend_order)
-            sflux /= poly.polyval(stime - m, coeffs)
-            sflux -= 1.
+        #   continue
 
         # Call the algorithm.
         if direction == 2:
-            __bls_pulse_binned_compound(stime, sflux, sfluxerr, samples, segsize, mindur,
+            __bls_pulse_binned_compound(stime, sflux, sfluxerr, ssamples, segsize, mindur,
                 maxdur, srsq_dip[i,:], duration_dip[i,:], depth_dip[i,:], midtime_dip[i,:],
                 srsq_blip[i,:], duration_blip[i,:], depth_blip[i,:], midtime_blip[i,:])
         else:
-            __bls_pulse_binned(stime, sflux, sfluxerr, samples, segsize, mindur, maxdur,
+            __bls_pulse_binned(stime, sflux, sfluxerr, ssamples, segsize, mindur, maxdur,
                 direction, srsq[i,:], duration[i,:], depth[i,:], midtime[i,:])
 
     # Fix the time offset (subtracted off earlier).
@@ -140,8 +114,7 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, di
             srsq_blip=srsq_blip[ind2,ndx2].ravel(),
             duration_blip=duration_blip[ind2,ndx2].ravel(),
             depth_blip=depth_blip[ind2,ndx2].ravel(),
-            midtime_blip=midtime_blip[ind2,ndx2].ravel(),
-            segstart=segstart, segend=segend)
+            midtime_blip=midtime_blip[ind2,ndx2].ravel())
     else:
         midtime += t
 
@@ -152,24 +125,211 @@ int nbins, double segsize, double mindur, double maxdur, int detrend_order=3, di
         return dict(srsq=srsq[ind,ndx].ravel(),
             duration=duration[ind,ndx].ravel(),
             depth=depth[ind,ndx].ravel(),
-            midtime=midtime[ind,ndx].ravel(),
-            segstart=segstart, segend=segend)
+            midtime=midtime[ind,ndx].ravel())
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.profile(True)
-def __get_binned_segment(np.ndarray[double, ndim=1, mode='c'] time,
+def bin_and_detrend(np.ndarray[double, ndim=1, mode='c'] time,
 np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] fluxerr,
-int nbins, double segsize, int nsamples, int n, int ndx,
-np.ndarray[double, ndim=1, mode='c'] stime, np.ndarray[double, ndim=1, mode='c'] sflux,
-np.ndarray[double, ndim=1, mode='c'] sfluxerr, np.ndarray[double, ndim=1, mode='c'] samples):
-    cdef double start, end
+int nbins, double segsize, int detrend_order=3, int maxgap=100):
+    '''
+    Bin and detrend a full dataset (time, flux, and error). Binning takes place
+    in O(N) time; time to detrend will scale with both N and `detrend_order`.
 
-    do_bin_segment(&time[0], &flux[0], &fluxerr[0], nbins, segsize, nsamples, n, &ndx,
-        &stime[0], &sflux[0], &sfluxerr[0], &samples[0], &start, &end)
+    :param time: Array of observation times
+    :type time: np.ndarray
+    :param flux: Array of fluxes observed at `times`
+    :type flux: np.ndarray
+    :param fluxerr: Array of flux errors observed at `times`
+    :type fluxerr: np.ndarray
+    :param nbins: Number of bins in each segment
+    :type nbins: int
+    :param segsize: Size of each segment, in the same time units as `times`
+    :type segsize: float
+    :param detrend_order: Order of the polynomial to fit for detrending
+    :type detrend_order: int
+    '''
+    cdef double start, end, t
+    cdef int nsamples, nsegments, save, i, j, x, y
+    cdef int gapcount, dstart_, dend_, ingap
+    cdef np.ndarray[double, ndim=1, mode='c'] btime, bflux, bfluxerr, bsamples
+    cdef np.ndarray[double, ndim=1, mode='c'] dflux, dfluxerr, trend
+    cdef np.ndarray[double, ndim=1, mode='c'] stime, sflux, sfluxerr, ssamples
+    cdef np.ndarray[double, ndim=1, mode='c'] stime_extend, sflux_extend, sfluxerr_extend
+    cdef np.ndarray[double, ndim=1, mode='c'] segstart, segend
 
-    return ndx, start, end
+    t = np.nanmin(time)
+    time -= t
+
+    nsamples = np.size(time)
+    nsegments = int(np.floor(np.nanmax(time) / segsize) + 1)
+    save = 0
+
+    # Arrays for the binned data and sample counts
+    btime = np.zeros((nsegments*nbins,), dtype='float64')
+    bflux = np.zeros((nsegments*nbins,), dtype='float64')
+    bfluxerr = np.zeros((nsegments*nbins,), dtype='float64')
+    bsamples = np.zeros((nsegments*nbins,), dtype='float64')
+
+    # Arrays for the detrended data. Note that we don't change the time
+    # axis when we detrend, so there is no need for a `dtime` array.
+    dflux = np.empty((nsegments*nbins,), dtype='float64')
+    dfluxerr = np.empty((nsegments*nbins,), dtype='float64')
+    dflux[:] = np.nan
+    dfluxerr[:] = np.nan
+
+    # Array to store detrending coefficients.
+    coeffs = np.empty((nsegments,detrend_order+1), dtype='float64')
+
+    # Other preallocated arrays; store segment start/end times and a flag
+    # for segments that should not be used.
+    segstart = np.empty((nsegments,), dtype='float64')
+    segend = np.empty((nsegments,), dtype='float64')
+
+    for i in xrange(nsegments):
+        j = nbins * i
+
+        # Construct views onto the binned arrays. These will contain the binned
+        # times, fluxes, errors, and sample counts for this segment alone.
+        stime = btime[j:j+nbins]
+        sflux = bflux[j:j+nbins]
+        sfluxerr = bfluxerr[j:j+nbins]
+        ssamples = bsamples[j:j+nbins]
+
+        # Perform the actual binning. This function writes directly to the binned
+        # arrays in memory. The variable `save` keeps up with the index of the next
+        # segment start so that we can bin in O(N) time (only need to loop through
+        # the array once). This is also why the entire array is binned and detrended
+        # at once.
+        do_bin_segment(&time[0], &flux[0], &fluxerr[0], nbins, segsize, nsamples, i, &save,
+            &stime[0], &sflux[0], &sfluxerr[0], &ssamples[0], &start, &end)
+
+        # Correct the segment start and end times by the constant offset found
+        # earlier so they are on the same scale as the input time.
+        segstart[i] = start + t
+        segend[i] = end + t
+
+    # Initialize these parameters reasonably; they will all be overwritten
+    # in the loop, but initializing `gapcount` to 0 is very important!
+    ingap = False
+    gapcount = 0
+    dstart_ = 0
+    dend_ = 0
+
+    for i in xrange(nsegments*nbins):
+        if np.isnan(bflux[i]):
+            gapcount += 1
+        else:
+            gapcount = 0
+
+            if ingap:
+                ingap = False
+                dstart_ = i
+            else:
+                dend_ = i
+
+        if gapcount > maxgap and not ingap and dstart_ < dend_:
+            # We have reached a gap, so the data between `dstart_` and `dend_`
+            # should be valid.
+            ingap = True
+
+            ndx = np.where(np.isfinite(bflux[dstart_:dend_]))[0]
+
+            if len(ndx) <= detrend_order + 1 and detrend_order != 0:
+                dflux[dstart_:dend_] = np.nan
+                dfluxerr[dstart_:dend_] = np.nan
+                continue
+
+            m = np.nanmean(btime[dstart_:dend_])
+            c = polyfit.polyfit(btime[dstart_:dend_][ndx] - m, bflux[dstart_:dend_][ndx],
+                bfluxerr[dstart_:dend_][ndx], detrend_order)
+
+            trend = poly.polyval(btime[dstart_:dend_] - m, c)
+
+            dflux[dstart_:dend_] = bflux[dstart_:dend_] / trend
+            dflux[dstart_:dend_] -= 1.
+            dfluxerr[dstart_:dend_] = bfluxerr[dstart_:dend_] / trend
+
+            #try:
+            #    ns = int(np.floor((np.nanmax(btime[dstart_:dend_]) -
+            #        np.nanmin(btime[dstart_:dend_])) / segsize) + 1)
+            #except ValueError:
+            #    raise ValueError(str(btime[dstart_:dend_]))
+
+            #for j in xrange(ns):
+            #    x = max(dstart_, dstart_ + (j - 1) * nbins)
+            #    y = min(dend_, dstart_ + (j + 2) * nbins) + 1
+            #    stime_extend = btime[x:y]
+            #    sflux_extend = bflux[x:y]
+            #    sfluxerr_extend = bfluxerr[x:y]
+
+            #    w = dstart_ + j * nbins
+            #    z = min(dend_, dstart_ + (j + 1) * nbins) + 1
+
+            #    ndx = np.where(np.isfinite(bflux[w:z]))[0]
+
+            #    if len(ndx) <= detrend_order + 1 and detrend_order != 0:
+            #        dflux[w:z] = np.nan
+            #        dfluxerr[w:z] = np.nan
+            #        continue
+
+            #    ndx = np.where(np.isfinite(sflux_extend))[0]
+
+            #    m = np.nanmean(btime[w:z])
+            #    c = polyfit.polyfit(stime_extend[ndx] - m, sflux_extend[ndx],
+            #        sfluxerr_extend[ndx], detrend_order)
+
+            #    trend = poly.polyval(btime[w:z] - m, c)
+
+            #    dflux[w:z] = bflux[w:z] / trend
+            #    dflux[w:z] -= 1.
+            #    dfluxerr[w:z] = bfluxerr[w:z] / trend
+
+    time += t
+    btime += t
+
+    return btime, dflux, dfluxerr, bsamples, segstart, segend
+
+    for i in xrange(nsegments):
+        j = nbins * i
+
+        ndx = np.where(np.isfinite(bflux[j:j+nbins]))[0]
+
+        if len(ndx) <= detrend_order + 1 and detrend_order != 0:
+            # Not enough points in this segment to detrend; go on to
+            # the next one.
+            dontuse[i] = 1
+            dflux[j:j+nbins] = np.nan
+            dfluxerr[j:j+nbins] = np.nan
+            continue
+        elif detrend_order != 0:
+            # These views onto the binned arrays will never overflow the bounds
+            # of the arrays because of clever indexing with `x` and `y`.
+            x = max(0,j-nbins)
+            y = min(j+2*nbins,nsegments*nbins)
+            stime_extend = btime[x:y]
+            sflux_extend = bflux[x:y]
+            sfluxerr_extend = bfluxerr[x:y]
+
+            ndx = np.where(np.isfinite(sflux_extend))[0]
+
+            # Use the extended arrays to calculate the polynomial coefficients.
+            m = (segstart[i] + segend[i]) / 2.
+            coeffs[i,:] = polyfit.polyfit(stime_extend[ndx] - m, sflux_extend[ndx],
+                sfluxerr_extend[ndx], detrend_order)
+
+            # NOTE: We only change the values stored in the current segment!
+            trend = poly.polyval(btime[j:j+nbins] - m, coeffs[i,:])
+            dflux[j:j+nbins] = bflux[j:j+nbins] / trend
+            dflux[j:j+nbins] -= 1.
+            dfluxerr[j:j+nbins] = bfluxerr[j:j+nbins] / trend
+
+    time += t
+    btime += t
+
+    return btime, dflux, dfluxerr, bsamples, segstart, segend, dontuse, coeffs
 
 
 @cython.boundscheck(False)
