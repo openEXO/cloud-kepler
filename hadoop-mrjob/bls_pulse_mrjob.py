@@ -20,7 +20,7 @@ class BLSPulse(MRJob):
         return [
             self.mr(mapper_cmd=os.path.join(FOLDER, 'get_data.py') + ' disk ' + DATAFOLDER,
                     reducer_cmd=os.path.join(FOLDER, 'join_quarters.py')),
-            self.mr(reducer_cmd=os.path.join(FOLDER, 'bls_pulse_vec_interface.py') +
+            self.mr(reducer_cmd=os.path.join(FOLDER, 'drive_bls_pulse.py') +
                 ' -c ' + os.path.join(FOLDER, 'sandbox/eprice/pulse.conf'))
         ]
 
