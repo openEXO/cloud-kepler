@@ -1,8 +1,8 @@
 Prototype of Cloud Kepler
 =========================
-| Master | emprice-cython | v1.2 |
+| Master | v1.15 | v1.2 |
 | :----: | :------------: | :--: |
-| ![Logo](https://travis-ci.org/openEXO/cloud-kepler.svg?branch=master) | ![Logo](https://travis-ci.org/openEXO/cloud-kepler.svg?branch=emprice-cython) | ![Logo](https://travis-ci.org/openEXO/cloud-kepler.svg?branch=v1.2) |
+| ![Logo](https://travis-ci.org/openEXO/cloud-kepler.svg?branch=master) | ![Logo](https://travis-ci.org/openEXO/cloud-kepler.svg?branch=v1.15) | ![Logo](https://travis-ci.org/openEXO/cloud-kepler.svg?branch=v1.2) |
 
 Pipeline for processing Kepler lightcurves and search for signals of planets/flares.
 
