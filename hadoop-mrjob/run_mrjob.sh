@@ -5,7 +5,7 @@ echo "Making a directory for our input data"
 hadoop dfs -mkdir mrjob-input
 
 echo "Copying input text to HDFS"
-$input_filename=$(basename "$1")
+input_filename=$(basename "$1")
 hadoop dfs -put $1 mrjob-input/$input_filename
 
 echo "Running our mrjob Python script"

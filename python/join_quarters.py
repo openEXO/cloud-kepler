@@ -33,7 +33,7 @@ if __name__ == '__main__':
             # We start a new ID whenever the KIC ID changes *or* if a quarter
             # repeats for the same star.
             current_kic = current_kic + '_' + \
-                ''.join(np.random.choice(list(string.lowercase), size=(4,)))
+                ''.join(random.choice(string.lowercase) for i in xrange(4))
             print '\t'.join([str(current_kic), str(all_quarters), encode_list(concatenated_time),
                 encode_list(concatenated_flux), encode_list(concatenated_eflux)])
             current_kic = None
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     # concatenation.
     if current_kic is not None:
         current_kic = current_kic + '_' + \
-            ''.join(np.random.choice(list(string.lowercase), size=(4,)))
+            ''.join(random.choice(string.lowercase) for i in xrange(4))
         print '\t'.join([str(current_kic), str(all_quarters), encode_list(concatenated_time),
             encode_list(concatenated_flux), encode_list(concatenated_eflux)])
 
