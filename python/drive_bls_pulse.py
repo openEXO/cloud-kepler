@@ -7,8 +7,6 @@ import cProfile
 import logging
 import numpy as np
 from utils import read_mapper_output, encode_array
-from bls_pulse_python import bls_pulse as bls_pulse_python
-from bls_pulse_vec import bls_pulse as bls_pulse_vec
 from bls_pulse_cython import bls_pulse as bls_pulse_cython
 from argparse import ArgumentParser
 from configparser import SafeConfigParser, NoOptionError
@@ -155,12 +153,8 @@ def main():
 
         if mode == 'python':
             raise NotImplementedError
-            out = bls_pulse_python(time, flux, fluxerr, nbins, segment, mindur, maxdur,
-                direction=direction)
         elif mode == 'vec':
             raise NotImplementedError
-            out = bls_pulse_vec(time, flux, fluxerr, nbins, segment, mindur, maxdur,
-                direction=direction)
         elif mode == 'cython':
             out = bls_pulse_cython(time, flux, fluxerr, nbins, segment, mindur, maxdur,
                 direction=direction)
