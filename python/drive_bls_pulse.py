@@ -143,6 +143,11 @@ def main():
         flux = np.array(flux, dtype='float64')
         fluxerr = np.array(fluxerr, dtype='float64')
 
+        ndx = np.argsort(time)
+        time = time[ndx]
+        flux = flux[ndx]
+        fluxerr = fluxerr[ndx]
+
         if profile:
             # Turn on profiling.
             pr = cProfile.Profile()
