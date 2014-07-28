@@ -189,9 +189,9 @@ class MASTDataDownloader(object):
             time = fitsdata['TIME'] + bjd_trunci + bjd_truncf - 2400000.
             pdcflux = fitsdata['PDCSAP_FLUX']
             pdcerror = fitsdata['PDCSAP_FLUX_ERR']
-            errorstat = fitsdata['SAP_QUALITY']
+            errorflag = fitsdata['SAP_QUALITY']
 
-            ndx = np.where(errorstat == 0)
+            ndx = np.where(errorflag == 0)
             retval = DataStream(arrays=(time[ndx], pdcflux[ndx], pdcerror[ndx]))
 
             # Fix for windows, returns the filename into main so that os.unlink can be called there
@@ -280,9 +280,9 @@ class DiskDataLoader(object):
         time = fitsdata['TIME'] + bjd_trunci + bjd_truncf - 2400000.
         pdcflux = fitsdata['PDCSAP_FLUX']
         pdcerror = fitsdata['PDCSAP_FLUX_ERR']
-        errorstat = fitsdata['SAP_QUALITY']
+        errorflag = fitsdata['SAP_QUALITY']
 
-        ndx = np.where(errorstat == 0)
+        ndx = np.where(errorflag == 0)
         retval = DataStream(arrays=(time[ndx], pdcflux[ndx], pdcerror[ndx]))
         hdulist.close()
 

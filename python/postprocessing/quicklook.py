@@ -11,10 +11,12 @@ from utils import boxcar, read_mapper_output, read_pipeline_output, \
 
 patch = None
 nbins = 1000
+segsize = 2.
 
 
 def __onclick(event, ax, kdtree, segstart, segend, duration_dip, depth_dip,
-        midtime_dip, duration_blip, depth_blip, midtime_blip, time, flux, fluxerr):
+        midtime_dip, duration_blip, depth_blip, midtime_blip, time, flux, fluxerr,
+        dtime, dflux, dfluxerr):
     global patch
 
     # Use the plot size to determine a reasonable maximum distance.
@@ -93,6 +95,9 @@ def main(file_data, file_pipeline):
         flux = np.array(flux)
         fluxerr = np.array(fluxerr)
 
+        dtime, dflux, dfluxerr, _, _, _ = bin_and_detrend(time, flux, fluxerr,
+            nbins, segsize, detrend_order=3)
+
         # Filter out NaNs in pipeline output and save parameters as arrays.
         ndx = np.where(np.isfinite(depth_dip))
         segstart = np.array(segstart)[ndx]
@@ -115,7 +120,7 @@ def main(file_data, file_pipeline):
         cid = fig.canvas.mpl_connect('button_press_event',
             lambda e: __onclick(e, ax, kdtree, segstart, segend, duration_dip,
                 depth_dip, midtime_dip, duration_blip, depth_blip, midtime_blip,
-                time, flux, fluxerr))
+                time, flux, fluxerr, dtime, dflux, dfluxerr))
 
         # Plot the dip and blip depths.
         ax.scatter(depth_dip, depth_blip, marker='x', color='k')

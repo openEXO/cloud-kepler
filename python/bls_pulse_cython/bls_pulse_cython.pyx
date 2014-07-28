@@ -2,7 +2,6 @@
 
 import numpy as np
 import detrend.polyfit as polyfit
-import matplotlib.pyplot as plt
 from numpy.polynomial import polynomial as poly
 cimport numpy as np
 cimport cython
@@ -40,7 +39,11 @@ double maxdur, int detrend_order=3, direction=0):
     time -= t
 
     nsamples = np.size(time)
-    nsegments = np.floor(np.nanmax(time) / segsize) + 1
+
+    try:
+        nsegments = np.floor(np.nanmax(time) / segsize) + 1
+    except ValueError:
+        return None
 
     if direction == 2:
         srsq_dip = np.empty((nsegments,nbins), dtype='float64')
@@ -64,26 +67,6 @@ double maxdur, int detrend_order=3, direction=0):
         sflux = flux[ndx:ndx+nbins]
         sfluxerr = fluxerr[ndx:ndx+nbins]
         ssamples = samples[ndx:ndx+nbins]
-
-        #if flag[i] == 1:
-            # There weren't enough points to do any detrending; go on to the
-            # next segment.
-        #    if direction == 2:
-        #        srsq_dip[i,:] = 0.
-        #        depth_dip[i,:] = np.nan
-        #        duration_dip[i,:] = np.nan
-        #        midtime_dip[i,:] = np.nan
-        #        srsq_blip[i,:] = 0.
-        #        depth_blip[i,:] = np.nan
-        #        duration_blip[i,:] = np.nan
-        #        midtime_blip[i,:] = np.nan
-        #    else:
-        #        srsq[i,:] = 0.
-        #        depth[i,:] = np.nan
-        #        duration[i,:] = np.nan
-        #        midtime[i,:] = np.nan
-
-        #   continue
 
         # Call the algorithm.
         if direction == 2:
@@ -152,8 +135,8 @@ int nbins, double segsize, int detrend_order=3, int maxgap=100):
     :type detrend_order: int
     '''
     cdef double start, end, t
-    cdef int nsamples, nsegments, save, i, j, x, y
-    cdef int gapcount, dstart_, dend_, ingap
+    cdef int nsamples, nsegments, save, i, j
+    cdef int gapcount, ingap, dstart_, dend_, x, y, w, z
     cdef np.ndarray[double, ndim=1, mode='c'] btime, bflux, bfluxerr, bsamples
     cdef np.ndarray[double, ndim=1, mode='c'] dflux, dfluxerr, trend
     cdef np.ndarray[double, ndim=1, mode='c'] stime, sflux, sfluxerr, ssamples
@@ -213,7 +196,7 @@ int nbins, double segsize, int detrend_order=3, int maxgap=100):
 
     # Initialize these parameters reasonably; they will all be overwritten
     # in the loop, but initializing `gapcount` to 0 is very important!
-    ingap = False
+    ingap = True
     gapcount = 0
     dstart_ = 0
     dend_ = 0
@@ -235,101 +218,45 @@ int nbins, double segsize, int detrend_order=3, int maxgap=100):
             # should be valid.
             ingap = True
 
-            ndx = np.where(np.isfinite(bflux[dstart_:dend_]))[0]
+            try:
+                ns = int(np.floor((np.nanmax(btime[dstart_:dend_]) -
+                    np.nanmin(btime[dstart_:dend_])) / segsize) + 1)
+            except ValueError:
+                raise ValueError(' '.join([str(btime[dstart_:dend_]), str(dstart_), str(dend_)]))
 
-            if len(ndx) <= detrend_order + 1 and detrend_order != 0:
-                dflux[dstart_:dend_] = np.nan
-                dfluxerr[dstart_:dend_] = np.nan
-                continue
+            for j in xrange(ns):
+                x = max(dstart_, dstart_ + (j - 1) * nbins)
+                y = min(dend_, dstart_ + (j + 2) * nbins) + 1
+                stime_extend = btime[x:y]
+                sflux_extend = bflux[x:y]
+                sfluxerr_extend = bfluxerr[x:y]
 
-            m = np.nanmean(btime[dstart_:dend_])
-            c = polyfit.polyfit(btime[dstart_:dend_][ndx] - m, bflux[dstart_:dend_][ndx],
-                bfluxerr[dstart_:dend_][ndx], detrend_order)
+                w = dstart_ + j * nbins
+                z = min(dend_, dstart_ + (j + 1) * nbins) + 1
 
-            trend = poly.polyval(btime[dstart_:dend_] - m, c)
+                ndx = np.where(np.isfinite(bflux[w:z]))[0]
 
-            dflux[dstart_:dend_] = bflux[dstart_:dend_] / trend
-            dflux[dstart_:dend_] -= 1.
-            dfluxerr[dstart_:dend_] = bfluxerr[dstart_:dend_] / trend
+                if len(ndx) <= detrend_order + 1 and detrend_order != 0:
+                    dflux[w:z] = np.nan
+                    dfluxerr[w:z] = np.nan
+                    continue
 
-            #try:
-            #    ns = int(np.floor((np.nanmax(btime[dstart_:dend_]) -
-            #        np.nanmin(btime[dstart_:dend_])) / segsize) + 1)
-            #except ValueError:
-            #    raise ValueError(str(btime[dstart_:dend_]))
+                ndx = np.where(np.isfinite(sflux_extend))[0]
 
-            #for j in xrange(ns):
-            #    x = max(dstart_, dstart_ + (j - 1) * nbins)
-            #    y = min(dend_, dstart_ + (j + 2) * nbins) + 1
-            #    stime_extend = btime[x:y]
-            #    sflux_extend = bflux[x:y]
-            #    sfluxerr_extend = bfluxerr[x:y]
+                m = np.nanmean(btime[w:z])
+                c = polyfit.polyfit(stime_extend[ndx] - m, sflux_extend[ndx],
+                    sfluxerr_extend[ndx], detrend_order)
 
-            #    w = dstart_ + j * nbins
-            #    z = min(dend_, dstart_ + (j + 1) * nbins) + 1
+                trend = poly.polyval(btime[w:z] - m, c)
 
-            #    ndx = np.where(np.isfinite(bflux[w:z]))[0]
-
-            #    if len(ndx) <= detrend_order + 1 and detrend_order != 0:
-            #        dflux[w:z] = np.nan
-            #        dfluxerr[w:z] = np.nan
-            #        continue
-
-            #    ndx = np.where(np.isfinite(sflux_extend))[0]
-
-            #    m = np.nanmean(btime[w:z])
-            #    c = polyfit.polyfit(stime_extend[ndx] - m, sflux_extend[ndx],
-            #        sfluxerr_extend[ndx], detrend_order)
-
-            #    trend = poly.polyval(btime[w:z] - m, c)
-
-            #    dflux[w:z] = bflux[w:z] / trend
-            #    dflux[w:z] -= 1.
-            #    dfluxerr[w:z] = bfluxerr[w:z] / trend
+                dflux[w:z] = bflux[w:z] / trend
+                dflux[w:z] -= 1.
+                dfluxerr[w:z] = bfluxerr[w:z] / trend
 
     time += t
     btime += t
 
     return btime, dflux, dfluxerr, bsamples, segstart, segend
-
-    for i in xrange(nsegments):
-        j = nbins * i
-
-        ndx = np.where(np.isfinite(bflux[j:j+nbins]))[0]
-
-        if len(ndx) <= detrend_order + 1 and detrend_order != 0:
-            # Not enough points in this segment to detrend; go on to
-            # the next one.
-            dontuse[i] = 1
-            dflux[j:j+nbins] = np.nan
-            dfluxerr[j:j+nbins] = np.nan
-            continue
-        elif detrend_order != 0:
-            # These views onto the binned arrays will never overflow the bounds
-            # of the arrays because of clever indexing with `x` and `y`.
-            x = max(0,j-nbins)
-            y = min(j+2*nbins,nsegments*nbins)
-            stime_extend = btime[x:y]
-            sflux_extend = bflux[x:y]
-            sfluxerr_extend = bfluxerr[x:y]
-
-            ndx = np.where(np.isfinite(sflux_extend))[0]
-
-            # Use the extended arrays to calculate the polynomial coefficients.
-            m = (segstart[i] + segend[i]) / 2.
-            coeffs[i,:] = polyfit.polyfit(stime_extend[ndx] - m, sflux_extend[ndx],
-                sfluxerr_extend[ndx], detrend_order)
-
-            # NOTE: We only change the values stored in the current segment!
-            trend = poly.polyval(btime[j:j+nbins] - m, coeffs[i,:])
-            dflux[j:j+nbins] = bflux[j:j+nbins] / trend
-            dflux[j:j+nbins] -= 1.
-            dfluxerr[j:j+nbins] = bfluxerr[j:j+nbins] / trend
-
-    time += t
-    btime += t
-
-    return btime, dflux, dfluxerr, bsamples, segstart, segend, dontuse, coeffs
 
 
 @cython.boundscheck(False)

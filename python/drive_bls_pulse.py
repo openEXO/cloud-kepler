@@ -138,6 +138,8 @@ def main():
 
     # Send the data to the algorithm.
     for k, q, time, flux, fluxerr in read_mapper_output(sys.stdin):
+        logger.info('Beginning analysis for ' + k)
+
         # Extract the array columns.
         time = np.array(time, dtype='float64')
         flux = np.array(flux, dtype='float64')
@@ -154,8 +156,16 @@ def main():
             dtime, dflux, dfluxerr, samples, segstart, segend  = \
                 bin_and_detrend(time, flux, fluxerr, nbins, segment, detrend_order=3)
 
+            #ndx = np.where(np.isfinite(dflux))
+            #plt.plot(dtime[ndx], dflux[ndx])
+            #plt.show()
+
             out = bls_pulse(dtime, dflux, dfluxerr, samples, nbins, segment,
                 mindur, maxdur, direction=direction)
+
+            if out is None:
+                logger.error('BLS pulse failed for this dataset')
+                continue
 
             if direction == 2:
                 srsq_dip = out['srsq_dip']
@@ -168,7 +178,7 @@ def main():
                 midtime_blip = out['midtime_blip']
 
                 try:
-                    clean_signal(time, flux, dfluxerr, out)
+                    clean_signal(time, flux, dtime, dflux, dfluxerr, out)
                 except RuntimeError:
                     break
             else:
