@@ -21,6 +21,25 @@ class NonIntegerClustersError(Exception):
 
 
 def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
+    '''
+    Remove possible eclipsing binary signals from a light curve. This works best
+    on deep, strongly periodic signals, so it is unlikely to clean transit signals
+    (though it sometimes will). This should help BLS pulse find less prominent
+    signals in the same data.
+
+    :param time: Raw time vector (no detrending or binning)
+    :type time: np.ndarray
+    :param flux: Raw flux vector (no detrending or binning)
+    :type flux: np.ndarray
+    :param dtime: Binned and detrended time vector
+    :type dtime: np.ndarray
+    :param dflux: Binned and detrended flux vector
+    :type dflux: np.ndarray
+    :param dfluxerr: Binned and detrended flux error vector
+    :type dfluxerr: np.ndarray
+    :param out: Output from BLS pulse algorithm
+    :type out: dict
+    '''
     # We restrict the "standard deviation" of the cluster to be 5% of the
     # size of the space.
     size = max(np.nanmax(np.absolute(out['depth_dip'])), np.nanmax(out['depth_blip']))
@@ -94,13 +113,6 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
 
     p0 = np.array([best_duration, depth, best_period, best_phase], dtype='float64')
     logger.info('Best guess boxcar parameters:\n\t' + str(p0))
-    #logger.info(str(p0))
-
-    #pftime = np.mod(dtime, p0[2])
-    #ndx = np.where(np.isfinite(dflux))
-    #plt.scatter(pftime, dflux)
-    #plt.plot(pftime[ndx], boxcar(pftime[ndx], *p0), color='green')
-    #plt.show()
 
     ndx = np.where(np.isfinite(dflux))
     f = lambda x: dflux[ndx] - boxcar(dtime[ndx], *x)

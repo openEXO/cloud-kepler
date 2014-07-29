@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import detrend.polyfit as polyfit
+from detrend import polyfit
 from numpy.polynomial import polynomial as poly
 cimport numpy as np
 cimport cython
@@ -24,6 +24,7 @@ cdef extern int do_bin_segment(double *time, double *flux, double *fluxerr, int 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.profile(True)
+@cython.embedsignature(True)
 def bls_pulse(np.ndarray[double, ndim=1, mode='c'] time,
 np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] fluxerr,
 np.ndarray[double, ndim=1, mode='c'] samples, int nbins, double segsize, double mindur,
@@ -38,9 +39,8 @@ double maxdur, int detrend_order=3, direction=0):
     t = np.nanmin(time)
     time -= t
 
-    nsamples = np.size(time)
-
     try:
+        nsamples = np.size(time)
         nsegments = np.floor(np.nanmax(time) / segsize) + 1
     except ValueError:
         return None
@@ -114,6 +114,7 @@ double maxdur, int detrend_order=3, direction=0):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.profile(True)
+@cython.embedsignature(True)
 def bin_and_detrend(np.ndarray[double, ndim=1, mode='c'] time,
 np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] fluxerr,
 int nbins, double segsize, int detrend_order=3, int maxgap=100):
@@ -262,6 +263,7 @@ int nbins, double segsize, int detrend_order=3, int maxgap=100):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.profile(True)
+@cython.embedsignature(True)
 def __bls_pulse_binned(np.ndarray[double, ndim=1, mode='c'] time,
 np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] fluxerr,
 np.ndarray[double, ndim=1, mode='c'] samples, double segsize, double mindur, double maxdur,
@@ -295,6 +297,7 @@ np.ndarray[double, ndim=1, mode='c'] midtime):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.profile(True)
+@cython.embedsignature(True)
 def __bls_pulse_binned_compound(np.ndarray[double, ndim=1, mode='c'] time,
 np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] fluxerr,
 np.ndarray[double, ndim=1, mode='c'] samples, double segsize, double mindur, double maxdur,

@@ -36,6 +36,11 @@ COLORS = {
 
 
 class ColoredFormatter(logging.Formatter):
+    '''
+    Formatter compatible with Python ``logging`` module. Allows colored
+    messages to be written to the terminal, determined by the level
+    of the message (warning, error, etc.).
+    '''
     def __init__(self, msg, use_color=True):
         logging.Formatter.__init__(self, msg)
         self.use_color = use_color
@@ -51,6 +56,12 @@ class ColoredFormatter(logging.Formatter):
 
 
 def setup_logging(fname):
+    '''
+    Standard way to set up logging for this library.
+
+    :param fname: File name of the calling module (from ``__file__``)
+    :type fname: str
+    '''
     name = '.'.join(os.path.basename(fname).split('.')[:-1])
 
     logger = logging.getLogger(name)
@@ -63,6 +74,16 @@ def setup_logging(fname):
 
 
 def handle_exception(exc_tuple):
+    '''
+    If these commands are called as a pipe chain with bash, etc., the chain
+    needs to be stopped with a ``sys.exit(1)`` call, which prevents printing
+    the information about the exception we are used to. Call this function
+    with the exception tuple to print out the traceback to STDERR before
+    calling the exit.
+
+    :param exc_tuple: Exception tuple (from ``sys.exc_info()``)
+    :tupe exc_tuple: tuple
+    '''
     exc_type, exc_value, exc_traceback = exc_tuple
     lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
     sys.stderr.write(''.join(lines))
@@ -72,6 +93,15 @@ def handle_exception(exc_tuple):
 def boxcar(time, duration, depth, midtime):
     '''
     General function for producing a boxcar signal; useful for plotting.
+
+    :param time: Vector of observation times
+    :type time: np.ndarray
+    :param duration: Duration of the signal
+    :type duration: float
+    :param depth: Depth of the signal
+    :type depth: float
+    :param midtime: Midtime of the signal
+    :type midtime: float
     '''
     ndx = np.where((time >= midtime - duration / 2.) & (time <= midtime + duration / 2.))
     flux = np.zeros_like(time)
@@ -111,6 +141,21 @@ def bin_single_segment_slow(time, flux, fluxerr, nbins, segstart, segend):
     useful for plotting individual segments and debugging.
 
     See http://stackoverflow.com/questions/6163334/binning-data-in-python-with-scipy-numpy
+
+    :param time: Vector of times
+    :type time: np.ndarray
+    :param flux: Vector of fluxes
+    :type flux: np.ndarray
+    :param fluxerr: Vector of flux errors
+    :type fluxerr: np.ndarray
+    :param nbins: Number of bins per segment
+    :type nbins: int
+    :param segstart: Start time of this segment
+    :type segstart: float
+    :param segend: End time of this segment
+    :type segend: float
+
+    :rtype: tuple
     '''
     bin_slices = np.linspace(segstart, segend, nbins + 1)
 
@@ -135,7 +180,7 @@ def read_mapper_output(f, separator='\t', uri=False):
     yields the decoded and split line. The format is KIC ID, quarter, [uri], time,
     flux, error for each line.
 
-    :param f: File to read; usually stdin
+    :param f: File to read; usually ``sys.stdin``
     :type f: file
     :param separator: Sepearator between parts of an entry
     :type separator: str
@@ -163,7 +208,7 @@ def read_pipeline_output(f, separator='\t'):
     segment_start, segment_end, srsq_dip, duration_dip, depth_dip, midtime_dip,
     srsq_blip, duration_blip, depth_blip, midtime_blip.
 
-    :param f: File to read; usually stdin
+    :param f: File to read; usually ``sys.stdin``
     :type f: file
     :param separator: Sepearator between parts of an entry
     :type separator: str
@@ -226,14 +271,19 @@ def decode_array(s):
 
 def extreme(a, b):
     '''
+    Calculate the extreme of two numbers; ``a`` if ``abs(a) > abs(b)``.
 
+    :rtype: float
     '''
     return a if (abs(a) > abs(b)) else b
 
 
 def extreme_vec(arr):
     '''
+    Calculate the extreme of an array; defined as the value with the
+    greatest absolute value.
 
+    :rtype: float
     '''
     ndx = np.nanargmax(np.absolute(arr))
     return arr[ndx]

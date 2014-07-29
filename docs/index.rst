@@ -18,6 +18,7 @@ Contents:
    data
    bls_pulse
    detrend
+   clean
    postprocessing
    utils
 
