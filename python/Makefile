@@ -1,6 +1,7 @@
 .PHONY: default clean html-docs latex-docs
 
 default:
+	which python
 	cd bls_pulse_cython; make
 	cd detrend; make
 
