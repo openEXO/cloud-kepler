@@ -164,7 +164,7 @@ def main():
                 mindur, maxdur, direction=direction)
 
             if out is None:
-                logger.error('BLS pulse failed for this dataset')
+                logger.error('BLS pulse failed for KIC ' + k)
                 continue
 
             if direction == 2:

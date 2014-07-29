@@ -39,11 +39,8 @@ double maxdur, int detrend_order=3, direction=0):
     t = np.nanmin(time)
     time -= t
 
-    try:
-        nsamples = np.size(time)
-        nsegments = np.floor(np.nanmax(time) / segsize) + 1
-    except ValueError:
-        return None
+    nsamples = np.size(time)
+    nsegments = np.floor(np.nanmax(time) / segsize) + 1
 
     if direction == 2:
         srsq_dip = np.empty((nsegments,nbins), dtype='float64')
@@ -245,7 +242,7 @@ int nbins, double segsize, int detrend_order=3, int maxgap=100):
                 ndx = np.where(np.isfinite(sflux_extend))[0]
 
                 m = np.nanmean(btime[w:z])
-                c = polyfit.polyfit(stime_extend[ndx] - m, sflux_extend[ndx],
+                c = polyfit(stime_extend[ndx] - m, sflux_extend[ndx],
                     sfluxerr_extend[ndx], detrend_order)
 
                 trend = poly.polyval(btime[w:z] - m, c)
