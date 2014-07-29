@@ -41,14 +41,14 @@ int do_bin_segment(double *time, double *flux, double *fluxerr, int nbins,
 
     while (true)
     {
+        if ((i >= nsamples) || (time[i] >= *end))
+            break;
+
         if (isnan(flux[i]))
         {
             i++;
             continue;
         }
-
-        if ((time[i] >= *end) || (i >= nsamples))
-            break;
 
         j = (int) floor((time[i] - *start) / binsize);
 

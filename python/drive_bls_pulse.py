@@ -156,16 +156,12 @@ def main():
             dtime, dflux, dfluxerr, samples, segstart, segend  = \
                 bin_and_detrend(time, flux, fluxerr, nbins, segment, detrend_order=3)
 
-            #ndx = np.where(np.isfinite(dflux))
-            #plt.plot(dtime[ndx], dflux[ndx])
-            #plt.show()
-
             out = bls_pulse(dtime, dflux, dfluxerr, samples, nbins, segment,
                 mindur, maxdur, direction=direction)
 
             if out is None:
                 logger.error('BLS pulse failed for KIC ' + k)
-                continue
+                break
 
             if direction == 2:
                 srsq_dip = out['srsq_dip']
@@ -191,7 +187,7 @@ def main():
             ps = pstats.Stats(pr, stream=sys.stderr).sort_stats('time')
             ps.print_stats()
 
-        if direction == 2:
+        if direction == 2 and out is not None:
             # Print output.
             if fmt == 'encoded':
                 print "\t".join([k, q, encode_array(segstart), encode_array(segend), encode_array(srsq_dip),
@@ -214,7 +210,7 @@ def main():
                 print "-" * 120
                 print
                 print
-        else:
+        elif out is not None:
             srsq = out['srsq']
             duration = out['duration']
             depth = out['depth']
