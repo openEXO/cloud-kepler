@@ -6,10 +6,11 @@ import sys
 if len(sys.argv) != 3:
     raise ValueError('Usage: geninput.py <infile> <configfile>')
 
-THISDIR = os.path.abspath('.')
+THISDIR = os.path.dirname(__file__)
 JOBDIR = os.path.join(THISDIR, 'condor_input')
 OUTDIR = os.path.join(THISDIR, 'condor_output')
-PYTHONDIR = os.path.abspath('../python')
+PYTHONDIR = os.path.abspath(os.path.join(THISDIR, '../python'))
+REMOTEDIR = os.path.abspath(os.path.join(THISDIR, '../remote'))
 CONFIG = os.path.abspath(sys.argv[2])
 
 try:
@@ -22,7 +23,7 @@ try:
 except OSError:
     pass
 
-all_submit = open('condor_submit_all.sh', 'w')
+all_submit = open(os.path.join(THISDIR, 'condor_submit_all.sh'), 'w')
 all_submit.write('#!/bin/bash\n\n')
 
 f = open(sys.argv[1], 'r')
@@ -40,10 +41,12 @@ for line in lines:
     this_job = open(os.path.join(JOBDIR, filespec + '.sh'), 'w')
     this_job.write('#!/bin/bash\n\n')
     this_job.write('date\n')
+    this_job.write('source ' + os.path.join(REMOTEDIR, 'py/bin/activate') + '\n')
     this_job.write('echo "' + line.rstrip() + '" | python ' +
         os.path.join(PYTHONDIR, 'get_data.py') + ' mast | python ' +
         os.path.join(PYTHONDIR, 'join_quarters.py') + ' | python ' +
         os.path.join(PYTHONDIR, 'drive_bls_pulse.py') + ' -c ' + CONFIG + '\n')
+    this_job.write('deactivate\n')
     this_job.write('date\n')
     this_job.flush()
     this_job.close()
@@ -66,5 +69,5 @@ for line in lines:
 
 all_submit.flush()
 all_submit.close()
-os.chmod('condor_submit_all.sh', 0744)
+os.chmod(os.path.join(THISDIR, 'condor_submit_all.sh'), 0744)
 
