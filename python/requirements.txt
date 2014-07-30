@@ -5,5 +5,7 @@ matplotlib
 cython
 pyfits
 sphinx
+argparse
+configparser
 scikit-learn
 
