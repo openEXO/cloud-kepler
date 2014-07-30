@@ -89,6 +89,8 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
             class_member_mask & core_samples_mask, err_flux=mean_flux_err)
     except NoClustersError:
         # We didn't find any clusters at all. This is a good place to stop.
+        logger.info('DBSCAN did not resolve any clusters in the depth_dip/period '
+            'space; stopping algorithm.')
         raise RuntimeError
     except NonIntegerClustersError:
         # Something weird is going on. Try one more time with a step of 2,
@@ -146,6 +148,8 @@ max_period_err=0.1):
     try:
         db = DBSCAN(eps=1., min_samples=10, metric=metric).fit(Y[:,0:2])
     except ValueError:
+        logger.info('Not enough points for DBSCAN to find clusters in the '
+            'depth_dip/period space; stopping algorithm.')
         raise RuntimeError
 
     core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
