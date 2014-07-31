@@ -136,6 +136,8 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
         (pftime < best_phase + 2. * best_duration))
     flux[ndx] = np.nan
 
+    return dict(period=best_period, duration=best_duration, phase=best_phase)
+
 
 def __do_period_search(X, time, mask, step=1, err_midtime=0.1, err_flux=0.01,
 max_period_err=0.1):

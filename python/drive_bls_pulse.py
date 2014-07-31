@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 import pstats
 import cProfile
@@ -59,7 +60,7 @@ def __init_parser(defaults):
         default=bool(int(defaults['profiling'])), help='[Optional] Turn on speed profiling.')
     parser.add_argument('--fits', action='store_true', dest='fitsout',
         default=bool(int(defaults['fits_output'])), help='[Optional] Turn on FITS output.')
-    parser.add_argument('--fitsdir' action='store', dest='fitsdir',
+    parser.add_argument('--fitsdir', action='store', type=str, dest='fitsdir',
         default=defaults['fits_dir'], help='[Optional] Directory for FITS output.')
 
     return parser
@@ -104,7 +105,7 @@ def main():
     # and the configuration parser.
     defaults = {'min_duration':'0.0416667', 'max_duration':'0.5', 'n_bins':'100',
         'direction':'0', 'mode':'vec', 'print_format':'encoded', 'verbose':'0',
-        'profiling':'0', 'fits_output':'1', 'fits_dir'=''}
+        'profiling':'0', 'fits_output':'1', 'fits_dir':''}
 
     # Set up the parser for command line arguments and read them.
     parser = __init_parser(defaults)
@@ -142,7 +143,7 @@ def main():
         cfg['verbose'] = cp.getboolean('DEFAULT', 'verbose')
         cfg['profile'] = cp.getboolean('DEFAULT', 'profiling')
         cfg['fitsout'] = cp.getboolean('DEFAULT', 'fits_output')
-        cfg['fitsdir'] = cp.getboolean('DEFAULT', 'fits_dir')
+        cfg['fitsdir'] = cp.get('DEFAULT', 'fits_dir')
 
     if cfg['fitsout'] and cfg['fitsdir'] == '':
         parser.error('No FITS output directory specified.')
@@ -186,50 +187,57 @@ def main():
 
             if np.count_nonzero(~np.isnan(dflux)) == 0:
                 logger.warning('Not enough points left to continue BLS pulse')
+                bls_out = None
                 break
 
             bls_out = bls_pulse(dtime, dflux, dfluxerr, samples, cfg['nbins'],
                 cfg['segment'], cfg['mindur'], cfg['maxdur'], direction=cfg['direction'])
 
+            if cfg['direction'] != 2:
+                # Cleaning iterations currently won't work unless direction is 2,
+                # so we don't loop in this case.
+                break
+
+            srsq_dip = bls_out['srsq_dip']
+            duration_dip = bls_out['duration_dip']
+            depth_dip = bls_out['depth_dip']
+            midtime_dip = bls_out['midtime_dip']
+            srsq_blip = bls_out['srsq_blip']
+            duration_blip = bls_out['duration_blip']
+            depth_blip = bls_out['depth_blip']
+            midtime_blip = bls_out['midtime_blip']
+
+            try:
+                clean_out = clean_signal(time, flux, dtime, dflux, dfluxerr, bls_out)
+            except RuntimeError:
+                break
+
             if cfg['fitsout']:
-                # Save this lightcurve. On the first iteration, there is no output from
-                # the cleaning algorithm, so it is defined to be None. On subsequent
-                # iterations, it will contain information about the signal that was
-                # removed.
                 ndx = np.where(np.isfinite(dflux))
                 bundler.push_detrended_lightcurve(dtime[ndx], dflux[ndx], dfluxerr[ndx],
                     clean_out=clean_out)
                 bundler.push_bls_output(bls_out)
 
-            if cfg['direction'] == 2:
-                srsq_dip = bls_out['srsq_dip']
-                duration_dip = bls_out['duration_dip']
-                depth_dip = bls_out['depth_dip']
-                midtime_dip = bls_out['midtime_dip']
-                srsq_blip = bls_out['srsq_blip']
-                duration_blip = bls_out['duration_blip']
-                depth_blip = bls_out['depth_blip']
-                midtime_blip = bls_out['midtime_blip']
+        if cfg['fitsout'] and bls_out is not None:
+            # Save the detrended light curve and BLS output from the last iteration.
+            # There won't be any output from `clean_signal`, either because of the
+            # `direction` parameter or because there are no more strong periodic
+            # signals.
+            ndx = np.where(np.isfinite(dflux))
+            bundler.push_detrended_lightcurve(dtime[ndx], dflux[ndx], dfluxerr[ndx],
+                clean_out=None)
+            bundler.push_bls_output(bls_out)
 
-                try:
-                    clean_out = clean_signal(time, flux, dtime, dflux, dfluxerr, bls_out)
-                except RuntimeError:
-                    break
-            else:
-                # Cleaning iterations currently won't work unless direction is 2,
-                # so we don't loop here.
-                break
+            # Save the entire FITS file, including the configuration.
+            bundler.push_config(cfg)
+            bundler.write_file(os.path.abspath(os.path.expanduser(os.path.join(cfg['fitsdir'],
+                k + '.fits'))), clobber=True)
 
         if cfg['profile']:
             # Turn off profiling and print results to STDERR.
             pr.disable()
             ps = pstats.Stats(pr, stream=sys.stderr).sort_stats('time')
             ps.print_stats()
-
-        if cfg['fitsout']:
-            # Save the entire FITS file, including the configuration.
-            bundler.push_config(cfg)
-            bundler.write_file(os.path.join(cfg['fitsdir'], k + '.fits'))
 
         if cfg['direction'] == 2:
             # Print output.
