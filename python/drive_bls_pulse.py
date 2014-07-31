@@ -7,6 +7,7 @@ import cProfile
 import numpy as np
 import matplotlib.pyplot as plt
 from clean_signal import clean_signal
+from fits_output import BLSFitsBundler
 from utils import read_mapper_output, encode_array, setup_logging, handle_exception
 from bls_pulse_cython import bls_pulse, bin_and_detrend
 from argparse import ArgumentParser
@@ -43,7 +44,7 @@ def __init_parser(defaults):
         default=int(defaults['n_bins']), help='[Optional] Number of bins to divide '
         'the lightcurve into.')
     parser.add_argument('--direction', action='store', type=int, dest='direction',
-        default=bool(defaults['direction']), help='[Optional] Direction of box wave to '
+        default=int(defaults['direction']), help='[Optional] Direction of box wave to '
         'look for. 1 = blip (top-hat), -1 = dip (drop), 0 = most significant, 2 = both.')
     parser.add_argument('--mode', action='store', type=str, dest='mode',
         default=defaults['mode'], help='[Optional] Implementation to use; python, '
@@ -53,9 +54,13 @@ def __init_parser(defaults):
         'screen. Options are \'encoded\' (base-64 binary) or \'normal\' (human-readable '
         'ASCII strings). Set to any other string (e.g., \'none\') to supress output printing.')
     parser.add_argument('-v', '--verbose', action='store_true', dest='verbose',
-        default=bool(defaults['verbose']), help='[Optional] Turn on verbose messages/logging.')
+        default=bool(int(defaults['verbose'])), help='[Optional] Turn on verbose messages/logging.')
     parser.add_argument('-x', '--profile', action='store_true', dest='profile',
-        default=bool(defaults['profiling']), help='[Optional] Turn on speed profiling.')
+        default=bool(int(defaults['profiling'])), help='[Optional] Turn on speed profiling.')
+    parser.add_argument('--fits', action='store_true', dest='fitsout',
+        default=bool(int(defaults['fits_output'])), help='[Optional] Turn on FITS output.')
+    parser.add_argument('--fitsdir' action='store', dest='fitsdir',
+        default=defaults['fits_dir'], help='[Optional] Directory for FITS output.')
 
     return parser
 
@@ -98,43 +103,53 @@ def main():
     # This is a global list of default values that will be used by the argument parser
     # and the configuration parser.
     defaults = {'min_duration':'0.0416667', 'max_duration':'0.5', 'n_bins':'100',
-        'direction':'0', 'mode':'vec', 'print_format':'encoded', 'verbose':'0', 'profiling':'0'}
+        'direction':'0', 'mode':'vec', 'print_format':'encoded', 'verbose':'0',
+        'profiling':'0', 'fits_output':'1', 'fits_dir'=''}
 
     # Set up the parser for command line arguments and read them.
     parser = __init_parser(defaults)
     args = parser.parse_args()
+    cfg = dict()
 
     if not args.config:
         # No configuration file specified -- read in command line arguments.
         if not args.segment:
             parser.error('No trial segment specified and no configuration file given.')
 
-        segment = args.segment
-        mindur = args.mindur
-        maxdur = args.maxdur
-        nbins = args.nbins
-        direction = args.direction
-        mode = args.mode
-        fmt = args.fmt
-        verbose = args.verbose
-        profile = args.profile
+        cfg['segment'] = args.segment
+        cfg['mindur'] = args.mindur
+        cfg['maxdur'] = args.maxdur
+        cfg['nbins'] = args.nbins
+        cfg['direction'] = args.direction
+        cfg['mode'] = args.mode
+        cfg['fmt'] = args.fmt
+        cfg['verbose'] = args.verbose
+        cfg['profile'] = args.profile
+        cfg['fitsout'] = args.fitsout
+        cfg['fitsdir'] = args.fitsdir
     else:
-        # Configuration file was given; read in that instead.
+        # Configuration file was given; read it instead.
         cp = ConfigParser(defaults)
         cp.read(args.config)
 
-        segment = cp.getfloat('DEFAULT', 'segment')
-        mindur = cp.getfloat('DEFAULT', 'min_duration')
-        maxdur = cp.getfloat('DEFAULT', 'max_duration')
-        nbins = cp.getint('DEFAULT', 'n_bins')
-        direction = cp.getint('DEFAULT', 'direction')
-        mode = cp.get('DEFAULT', 'mode')
-        fmt = cp.get('DEFAULT', 'print_format')
-        verbose = cp.getboolean('DEFAULT', 'verbose')
-        profile = cp.getboolean('DEFAULT', 'profiling')
+        cfg['segment'] = cp.getfloat('DEFAULT', 'segment')
+        cfg['mindur'] = cp.getfloat('DEFAULT', 'min_duration')
+        cfg['maxdur'] = cp.getfloat('DEFAULT', 'max_duration')
+        cfg['nbins'] = cp.getint('DEFAULT', 'n_bins')
+        cfg['direction'] = cp.getint('DEFAULT', 'direction')
+        cfg['mode'] = cp.get('DEFAULT', 'mode')
+        cfg['fmt'] = cp.get('DEFAULT', 'print_format')
+        cfg['verbose'] = cp.getboolean('DEFAULT', 'verbose')
+        cfg['profile'] = cp.getboolean('DEFAULT', 'profiling')
+        cfg['fitsout'] = cp.getboolean('DEFAULT', 'fits_output')
+        cfg['fitsdir'] = cp.getboolean('DEFAULT', 'fits_dir')
+
+    if cfg['fitsout'] and cfg['fitsdir'] == '':
+        parser.error('No FITS output directory specified.')
 
     # Perform any sanity-checking on the arguments.
-    __check_args(segment, mindur, maxdur, nbins, direction)
+    __check_args(cfg['segment'], cfg['mindur'], cfg['maxdur'], cfg['nbins'],
+        cfg['direction'])
 
     # Send the data to the algorithm.
     for k, q, time, flux, fluxerr in read_mapper_output(sys.stdin):
@@ -145,56 +160,85 @@ def main():
         flux = np.array(flux, dtype='float64')
         fluxerr = np.array(fluxerr, dtype='float64')
 
-        if profile:
+        # Don't assume the times are sorted already!
+        ndx = np.argsort(time)
+        time = time[ndx]
+        flux = flux[ndx]
+        fluxerr = fluxerr[ndx]
+
+        if cfg['profile']:
             # Turn on profiling.
             pr = cProfile.Profile()
             pr.enable()
+
+        if cfg['fitsout']:
+            # Set up the FITS bundler.
+            bundler = BLSFitsBundler()
+            bundler.make_header(k)
+            clean_out = None
 
         while True:
             # Do ALL detrending and binning here. The main algorithm function is now
             # separate from this functionality.
             dtime, dflux, dfluxerr, samples, segstart, segend  = \
-                bin_and_detrend(time, flux, fluxerr, nbins, segment, detrend_order=3)
+                bin_and_detrend(time, flux, fluxerr, cfg['nbins'], cfg['segment'],
+                    detrend_order=3)
 
-            out = bls_pulse(dtime, dflux, dfluxerr, samples, nbins, segment,
-                mindur, maxdur, direction=direction)
-
-            if out is None:
-                logger.error('BLS pulse failed for KIC ' + k)
+            if np.count_nonzero(~np.isnan(dflux)) == 0:
+                logger.warning('Not enough points left to continue BLS pulse')
                 break
 
-            if direction == 2:
-                srsq_dip = out['srsq_dip']
-                duration_dip = out['duration_dip']
-                depth_dip = out['depth_dip']
-                midtime_dip = out['midtime_dip']
-                srsq_blip = out['srsq_blip']
-                duration_blip = out['duration_blip']
-                depth_blip = out['depth_blip']
-                midtime_blip = out['midtime_blip']
+            bls_out = bls_pulse(dtime, dflux, dfluxerr, samples, cfg['nbins'],
+                cfg['segment'], cfg['mindur'], cfg['maxdur'], direction=cfg['direction'])
+
+            if cfg['fitsout']:
+                # Save this lightcurve. On the first iteration, there is no output from
+                # the cleaning algorithm, so it is defined to be None. On subsequent
+                # iterations, it will contain information about the signal that was
+                # removed.
+                ndx = np.where(np.isfinite(dflux))
+                bundler.push_detrended_lightcurve(dtime[ndx], dflux[ndx], dfluxerr[ndx],
+                    clean_out=clean_out)
+                bundler.push_bls_output(bls_out)
+
+            if cfg['direction'] == 2:
+                srsq_dip = bls_out['srsq_dip']
+                duration_dip = bls_out['duration_dip']
+                depth_dip = bls_out['depth_dip']
+                midtime_dip = bls_out['midtime_dip']
+                srsq_blip = bls_out['srsq_blip']
+                duration_blip = bls_out['duration_blip']
+                depth_blip = bls_out['depth_blip']
+                midtime_blip = bls_out['midtime_blip']
 
                 try:
-                    clean_signal(time, flux, dtime, dflux, dfluxerr, out)
+                    clean_out = clean_signal(time, flux, dtime, dflux, dfluxerr, bls_out)
                 except RuntimeError:
                     break
             else:
-                # Cleaning iterations currently won't work unless direction is 2.
+                # Cleaning iterations currently won't work unless direction is 2,
+                # so we don't loop here.
                 break
 
-        if profile:
+        if cfg['profile']:
             # Turn off profiling and print results to STDERR.
             pr.disable()
             ps = pstats.Stats(pr, stream=sys.stderr).sort_stats('time')
             ps.print_stats()
 
-        if direction == 2 and out is not None:
+        if cfg['fitsout']:
+            # Save the entire FITS file, including the configuration.
+            bundler.push_config(cfg)
+            bundler.write_file(os.path.join(cfg['fitsdir'], k + '.fits'))
+
+        if cfg['direction'] == 2:
             # Print output.
-            if fmt == 'encoded':
-                print "\t".join([k, q, encode_array(segstart), encode_array(segend), encode_array(srsq_dip),
-                    encode_array(duration_dip), encode_array(depth_dip), encode_array(midtime_dip),
-                    encode_array(srsq_blip), encode_array(duration_blip),
+            if cfg['fmt'] == 'encoded':
+                print "\t".join([k, q, encode_array(segstart), encode_array(segend),
+                    encode_array(srsq_dip), encode_array(duration_dip), encode_array(depth_dip),
+                    encode_array(midtime_dip), encode_array(srsq_blip), encode_array(duration_blip),
                     encode_array(depth_blip), encode_array(midtime_blip)])
-            elif fmt == 'normal':
+            elif cfg['fmt'] == 'normal':
                 print "-" * 120
                 print "Kepler " + k
                 print "Quarters: " + q
@@ -210,7 +254,7 @@ def main():
                 print "-" * 120
                 print
                 print
-        elif out is not None:
+        else:
             srsq = out['srsq']
             duration = out['duration']
             depth = out['depth']
@@ -219,10 +263,11 @@ def main():
             segend = out['segend']
 
             # Print output.
-            if fmt == 'encoded':
-                print "\t".join([k, q, encode_array(segstart), encode_array(segend), encode_array(srsq),
-                    encode_array(duration), encode_array(depth), encode_array(midtime)])
-            elif fmt == 'normal':
+            if cfg['fmt'] == 'encoded':
+                print "\t".join([k, q, encode_array(segstart), encode_array(segend),
+                    encode_array(srsq), encode_array(duration), encode_array(depth),
+                    encode_array(midtime)])
+            elif cfg['fmt'] == 'normal':
                 print "-" * 80
                 print "Kepler " + k
                 print "Quarters: " + q

@@ -22,43 +22,32 @@ if __name__ == '__main__':
     data = read_mapper_output(sys.stdin, uri=True)
 
     try:
-        current_kic = None
-        all_quarters = list()
+        for current_kic, group in groupby(data, itemgetter(0)):
+            try:
+                all_quarters = dict()
 
-        for kic, q, time, flux, fluxerr in data:
-            if (current_kic != kic and current_kic is not None) or \
-            (current_kic == kic and q in all_quarters):
-                # Starting a new ID. Print out the old results and reset.
-                # We start a new ID whenever the KIC ID changes *or* if a quarter
-                # repeats for the same star.
-                current_kic = current_kic + '_' + \
-                    ''.join(np.random.choice(list(string.lowercase), size=(4,)))
-                print '\t'.join([str(current_kic), str(all_quarters),
-                    encode_list(concatenated_time), encode_list(concatenated_flux),
-                    encode_list(concatenated_eflux)])
-                current_kic = None
+                # Patch to remove duplicate quarters.
+                for _, q, time, flux, eflux in group:
+                    all_quarters[q] = (time, flux, eflux)
 
-            if current_kic is None:
-                # First ID in the list or starting a new ID.
-                current_kic = kic
-
-                all_quarters = list()
                 concatenated_time = list()
                 concatenated_flux = list()
                 concatenated_eflux = list()
 
-            all_quarters.append(q)
-            concatenated_time.extend(time)
-            concatenated_flux.extend(flux)
-            concatenated_eflux.extend(fluxerr)
+                keys, vals = (all_quarters.keys(), all_quarters.values())
 
-        # Need one last print statement at the end to make sure we got the last "in-progress"
-        # concatenation.
-        if current_kic is not None:
-            current_kic = current_kic + '_' + \
-                ''.join(np.random.choice(list(string.lowercase), size=(4,)))
-            print '\t'.join([str(current_kic), str(all_quarters), encode_list(concatenated_time),
-                encode_list(concatenated_flux), encode_list(concatenated_eflux)])
+                for k, v in zip(keys, vals):
+                    t, f, e = v
+                    concatenated_time.extend(t)
+                    concatenated_flux.extend(f)
+                    concatenated_eflux.extend(e)
+
+                all_q = list(keys)
+                print '\t'.join([str(current_kic), str(all_q), encode_list(concatenated_time),
+                    encode_list(concatenated_flux), encode_list(concatenated_eflux)])
+            except ValueError:
+                # count was not a number, so silently discard this item
+                pass
     except:
         handle_exception(sys.exc_info())
         sys.exit(1)

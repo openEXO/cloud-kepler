@@ -55,7 +55,13 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
     metric = lambda x, y: np.sqrt((x[0] - y[0])**2. / mean_flux_err**2. +
         (x[1] - y[1])**2. / mean_flux_err**2.)
 
-    db = DBSCAN(eps=1., min_samples=10, metric=metric).fit(X[:,0:2])
+    try:
+        db = DBSCAN(eps=1., min_samples=10, metric=metric).fit(X[:,0:2])
+    except ValueError:
+        logger.info('Not enough points for DBSCAN to find clusters in the '
+            'depth_dip/period space; stopping algorithm.')
+        raise RuntimeError
+
     core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
     core_samples_mask[db.core_sample_indices_] = True
     labels = db.labels_
