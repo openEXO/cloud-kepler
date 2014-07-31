@@ -4,12 +4,11 @@
 BLS_PULSE algorithm, based on ``bls_pulse.pro`` originally written by Peter McCullough.
 '''
 
-import logging
 import numpy as np
-from utils import extreme
+from utils import extreme, setup_logging
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# Basic logging configuration.
+logger = setup_logging(__file__)
 
 
 def __convert_duration_to_bins(duration_days, nbins, segment_size, duration_type):
@@ -247,7 +246,5 @@ direction=0, detrend_order=0):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    logger.setLevel(logging.INFO)
     main()
 

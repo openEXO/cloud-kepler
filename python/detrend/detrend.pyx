@@ -9,15 +9,26 @@ cimport cython
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.profile(True)
+@cython.embedsignature(True)
 def polyfit(np.ndarray[double, ndim=1, mode='c'] time,
 np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] fluxerr,
 int order, double threshold=3., int niter=3):
     '''
     Fits a polynomial to data and removes values by sigma clipping, iterating the
     process as desired.
-    
-    :param time: Array of times
+
+    :param time: Vector of times
     :type time: numpy.ndarray
+    :param flux: Vector of fluxes
+    :type flux: numpy.ndarray
+    :param fluxerr: Vector of flux errors
+    :type fluxerr: numpy.ndarray
+    :param order: Order of the fitting polynomial
+    :type order: int
+    :param threshold: Maximum multiple of the standard deviation to be allowed
+    :type threshold: float
+    :param niter: Number of clipping iterations
+    :type niter: int
     '''
     cdef int i
     cdef double sigma

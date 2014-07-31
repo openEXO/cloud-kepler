@@ -4,9 +4,7 @@
 import sys
 import numpy as np
 from simulate import simulate_compound_signal
-from bls_pulse_python import bls_pulse as bls_pulse_python
-from bls_pulse_vec import bls_pulse as bls_pulse_vec
-from bls_pulse_cython import bls_pulse as bls_pulse_cython
+from bls_pulse_cython import bls_pulse as bls_pulse_cython, bin_and_detrend
 from argparse import ArgumentParser
 from utils import boxcar
 
@@ -33,7 +31,7 @@ def is_straddling(tmid, tdur, segsize, time):
         return False
 
 
-def main(err_on_fail=True, allow_straddling=True, ofile=None, mode='python'):
+def main(err_on_fail=True, allow_straddling=True, ofile=None):
     if ofile is not None:
         ofile.write('#\tMeas. mid.\tAct. mid.\tMeas. dpth.\tAct. dpth.\tMeas. dur.\tAct. dur\n')
 
@@ -55,8 +53,11 @@ def main(err_on_fail=True, allow_straddling=True, ofile=None, mode='python'):
     time, flux, fluxerr, duration, depth, midtime = \
         simulate_compound_signal(baseline, nsamples, sigma, segsize, mindur, maxdur)
 
-    out = bls_pulse_cython(time, flux, fluxerr, nbins, segsize, mindur, maxdur,
-        detrend_order=0, direction=2)
+    dtime, dflux, dfluxerr, dsamples, segstart, segend = \
+        bin_and_detrend(time, flux, fluxerr, nbins, segsize, detrend_order=0)
+
+    out = bls_pulse_cython(dtime, dflux, dfluxerr, dsamples, nbins, segsize,
+        mindur, maxdur, direction=2)
 
     bls_du_dip = out['duration_dip']
     bls_dp_dip = out['depth_dip']
@@ -123,11 +124,8 @@ if __name__ == '__main__':
         dest='straddling', type=int)
     parser.add_argument('-o', help='Specify an output file', default=None,
         dest='ofile', type=str)
-    parser.add_argument('-m', '--mode', help='Algorithm to test', default='python',
-        dest='mode', type=str)
     args = parser.parse_args()
 
-    print 'Test mode:', args.mode
     print 'Errors on fail:', bool(args.err)
     print 'Allow straddling to pass:', bool(args.straddling)
     print
@@ -137,7 +135,7 @@ if __name__ == '__main__':
     else:
         f = None
 
-    main(err_on_fail=args.err, allow_straddling=args.straddling, ofile=f, mode=args.mode)
+    main(err_on_fail=args.err, allow_straddling=args.straddling, ofile=f)
 
     if f is not None:
         f.close()

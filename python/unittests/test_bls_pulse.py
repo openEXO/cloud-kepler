@@ -6,7 +6,7 @@ import numpy as np
 from simulate import simulate_box_lightcurve
 from bls_pulse_python import bls_pulse as bls_pulse_python
 from bls_pulse_vec import bls_pulse as bls_pulse_vec
-from bls_pulse_cython import bls_pulse as bls_pulse_cython
+from bls_pulse_cython import bls_pulse as bls_pulse_cython, bin_and_detrend
 from argparse import ArgumentParser
 
 
@@ -74,8 +74,10 @@ def main(err_on_fail=True, allow_straddling=True, ofile=None, mode='python'):
             out = bls_pulse_vec(time, flux, fluxerr, nbins, segsize, mindur, maxdur,
                 detrend_order=0, direction=0)
         elif mode == 'cython':
-            out = bls_pulse_cython(time, flux, fluxerr, nbins, segsize, mindur, maxdur,
-                detrend_order=0, direction=0)
+            dtime, dflux, dfluxerr, dsamples, segstart, segend = \
+                bin_and_detrend(time, flux, fluxerr, nbins, segsize, detrend_order=0)
+            out = bls_pulse_cython(dtime, dflux, dfluxerr, dsamples, nbins, segsize,
+                mindur, maxdur, direction=0)
         else:
             raise ValueError('Invalid test mode: %s' % mode)
 

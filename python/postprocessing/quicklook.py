@@ -4,17 +4,19 @@ import scipy.spatial
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from detrend import polyfit
-from numpy.polynomial import polynomial as poly
+from bls_pulse_cython import bin_and_detrend
 from argparse import ArgumentParser
-from utils import boxcar, read_mapper_output, read_pipeline_output, bin_segment_slow
+from utils import boxcar, read_mapper_output, read_pipeline_output, \
+    bin_and_detrend_slow
 
 patch = None
 nbins = 1000
+segsize = 2.
 
 
 def __onclick(event, ax, kdtree, segstart, segend, duration_dip, depth_dip,
-        midtime_dip, duration_blip, depth_blip, midtime_blip, time, flux, fluxerr):
+        midtime_dip, duration_blip, depth_blip, midtime_blip, time, flux, fluxerr,
+        dtime, dflux, dfluxerr):
     global patch
 
     # Use the plot size to determine a reasonable maximum distance.
@@ -22,7 +24,7 @@ def __onclick(event, ax, kdtree, segstart, segend, duration_dip, depth_dip,
     max_dist = 0.05 * abs(xmax - xmin)
 
     # Get the nearest data point
-    dist, ndx = kdtree.query([event.xdata,event.ydata], k=1, p=1,
+    dist, which = kdtree.query([event.xdata,event.ydata], k=1, p=1,
         distance_upper_bound=max_dist)
 
     if np.isinf(dist):
@@ -32,50 +34,42 @@ def __onclick(event, ax, kdtree, segstart, segend, duration_dip, depth_dip,
         patch.remove()
 
     # Draw a circle around the selected point.
-    patch = patches.Circle((depth_dip[ndx], depth_blip[ndx]),
+    patch = patches.Circle((depth_dip[which], depth_blip[which]),
         max_dist, color='red', fill=False)
     ax.add_patch(patch)
     plt.draw()
 
-    # Clip the current segment and filter out NaN values.
-    ndx2 = np.where((np.isfinite(flux)) & (time >= segstart[ndx]) & (time < segend[ndx]))
-    t = time[ndx2]
-    f = flux[ndx2]
-
     # Bin the requested segment and detrend it.
-    t_binned, f_binned, err_binned = bin_segment_slow(time, flux, fluxerr, nbins,
-        segstart[ndx], segend[ndx])
-
-    ndx3 = np.where(np.isfinite(f_binned))
-    m = (segstart[ndx] + segend[ndx]) / 2.
-    coeffs = polyfit.polyfit(t_binned[ndx3] - m, f_binned[ndx3], err_binned[ndx3], 3)
-    trend = poly.polyval(t_binned - m, coeffs)
-    f_detrend = f_binned / trend
-    f_detrend -= 1.
+    t_binned, f_binned, err_binned, trend, f_detrend, err_detrend = \
+        bin_and_detrend_slow(time, flux, fluxerr, nbins, segstart[which], segend[which])
 
     # Set up the plotting environment.
     fig2 = plt.figure()
     ax1 = fig2.add_subplot(211)
     ax2 = fig2.add_subplot(212)
 
+    # We can't plot NaN values correctly; find their positions.
+    ndx = np.where(np.isfinite(flux))
+    ndx2 = np.where(np.isfinite(trend))
+
     # Plot the original time and flux, binned time and flux, and trend.
-    ax1.plot(t, f, label='Raw Kepler data')
+    ax1.plot(time[ndx], flux[ndx], label='Raw Kepler data')
     ax1.scatter(t_binned, f_binned, label='Binned data')
-    ax1.plot(t_binned[ndx3], trend[ndx3], ls='--', color='black', label='Trend')
+    ax1.plot(t_binned[ndx2], trend[ndx2], ls='--', color='black', label='Trend')
     ax1.legend(loc='best')
 
     # Plot the detrended, binned time and flux and best dip/blip.
     ax2.scatter(t_binned, f_detrend, label='Detrended data')
-    ax2.plot(t, boxcar(t, duration_dip[ndx], -depth_dip[ndx], midtime_dip[ndx]),
-        label='Best dip', color='green')
-    plt.axvline(midtime_dip[ndx], color='green', ls='--')
-    ax2.plot(t, boxcar(t, duration_blip[ndx], depth_blip[ndx], midtime_blip[ndx]),
-        label='Best blip', color='red')
-    plt.axvline(midtime_blip[ndx], color='red', ls='--')
+    ax2.plot(time[ndx], boxcar(time[ndx], duration_dip[which], -depth_dip[which],
+        midtime_dip[which]), label='Best dip', color='green')
+    plt.axvline(midtime_dip[which], color='green', ls='--')
+    ax2.plot(time[ndx], boxcar(time[ndx], duration_blip[which], depth_blip[which],
+        midtime_blip[which]), label='Best blip', color='red')
+    plt.axvline(midtime_blip[which], color='red', ls='--')
     ax2.legend(loc='best')
 
-    ax1.set_xlim(segstart[ndx], segend[ndx])
-    ax2.set_xlim(segstart[ndx], segend[ndx])
+    ax1.set_xlim(segstart[which], segend[which])
+    ax2.set_xlim(segstart[which], segend[which])
     ax2.set_xlabel('Time (days)')
     ax1.set_ylabel('Flux')
     ax2.set_ylabel('Flux')
@@ -101,6 +95,9 @@ def main(file_data, file_pipeline):
         flux = np.array(flux)
         fluxerr = np.array(fluxerr)
 
+        dtime, dflux, dfluxerr, _, _, _ = bin_and_detrend(time, flux, fluxerr,
+            nbins, segsize, detrend_order=3)
+
         # Filter out NaNs in pipeline output and save parameters as arrays.
         ndx = np.where(np.isfinite(depth_dip))
         segstart = np.array(segstart)[ndx]
@@ -123,7 +120,7 @@ def main(file_data, file_pipeline):
         cid = fig.canvas.mpl_connect('button_press_event',
             lambda e: __onclick(e, ax, kdtree, segstart, segend, duration_dip,
                 depth_dip, midtime_dip, duration_blip, depth_blip, midtime_blip,
-                time, flux, fluxerr))
+                time, flux, fluxerr, dtime, dflux, dfluxerr))
 
         # Plot the dip and blip depths.
         ax.scatter(depth_dip, depth_blip, marker='x', color='k')

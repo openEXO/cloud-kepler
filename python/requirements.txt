@@ -1,7 +1,10 @@
 numpy
 scipy
+pandas
 matplotlib
 cython
 pyfits
 sphinx
-
+argparse
+configparser
+scikit-learn

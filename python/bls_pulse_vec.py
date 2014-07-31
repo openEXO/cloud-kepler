@@ -3,15 +3,14 @@
 
 from __future__ import division
 import sys
-import logging
 import numpy as np
 import pandas as pd
 from collections import OrderedDict
 from PyKE.kepfit import lsqclip
-from utils import extreme_vec as extreme
+from utils import extreme_vec as extreme, setup_logging
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# Basic logging configuration.
+logger = setup_logging(__file__)
 
 
 def __reindex_to_matrix(series, matrix):
