@@ -28,7 +28,7 @@ cdef extern int do_bin_segment(double *time, double *flux, double *fluxerr, int 
 def bls_pulse(np.ndarray[double, ndim=1, mode='c'] time,
 np.ndarray[double, ndim=1, mode='c'] flux, np.ndarray[double, ndim=1, mode='c'] fluxerr,
 np.ndarray[double, ndim=1, mode='c'] samples, int nbins, double segsize, double mindur,
-double maxdur, int detrend_order=3, direction=0):
+double maxdur, direction=0):
     cdef int i, nsamples, nsegments
     cdef np.ndarray[double, ndim=1, mode='c'] stime, sflux, sfluxerr, ssamples
     cdef np.ndarray[double, ndim=2, mode='c'] srsq, depth, duration, midtime
@@ -191,6 +191,10 @@ int nbins, double segsize, int detrend_order=3, int maxgap=100):
         # earlier so they are on the same scale as the input time.
         segstart[i] = start + t
         segend[i] = end + t
+
+    if detrend_order == 0:
+        # No detrending required; return the binned arrays instead.
+        return btime, bflux, bfluxerr, bsamples, segstart, segend
 
     # Initialize these parameters reasonably; they will all be overwritten
     # in the loop, but initializing `gapcount` to 0 is very important!
