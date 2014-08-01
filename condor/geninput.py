@@ -14,7 +14,8 @@ REMOTEDIR = os.path.abspath(os.path.join(THISDIR, '../remote'))
 CONFIG = os.path.abspath(sys.argv[2])
 
 LD_LIBRARY_PATH='/usr/stsci/ssbx/python/lib:/usr/lib64'
-REQUIREMENTS='machine==\"science3.stsci.edu\" || machine==\"science4.stsci.edu\"'
+REQUIREMENTS='machine==\"science3.stsci.edu\" || ' \
+    'machine==\"science4.stsci.edu\"'
 
 try:
     os.makedirs(JOBDIR)
@@ -40,7 +41,7 @@ for line in lines:
         continue
 
     kic = s[0]
-    filespec = 'KIC' + kic
+    filespec = 'KIC' + kic.zfill(9)
 
     all_submit.write('condor_submit ' +
         os.path.join(JOBDIR, filespec + '.condor') + '\n')
@@ -48,14 +49,18 @@ for line in lines:
     this_job = open(os.path.join(JOBDIR, filespec + '.sh'), 'w')
     this_job.write('#!/bin/bash\n\n')
     this_job.write('date\n')
-    this_job.write('source ' + os.path.join(REMOTEDIR, 'py/bin/activate') + '\n')
-    this_job.write('export PYTHONPATH=' + os.path.join(REMOTEDIR, 'py', 'lib',
-        'python' + '.'.join(map(str, sys.version_info[0:2])), 'site-packages') + '\n')
-    this_job.write('export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:' + LD_LIBRARY_PATH + '\n')
+    this_job.write('source ' + os.path.join(REMOTEDIR, 'py/bin/activate') +
+        '\n')
+    this_job.write('export PYTHONPATH=' + os.path.join(REMOTEDIR, 'py',
+        'lib', 'python' + '.'.join(map(str, sys.version_info[0:2])),
+        'site-packages') + '\n')
+    this_job.write('export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:' +
+        LD_LIBRARY_PATH + '\n')
     this_job.write('echo "' + line.rstrip() + '" | python ' +
         os.path.join(PYTHONDIR, 'get_data.py') + ' mast | python ' +
         os.path.join(PYTHONDIR, 'join_quarters.py') + ' | python ' +
-        os.path.join(PYTHONDIR, 'drive_bls_pulse.py') + ' -c ' + CONFIG + '\n')
+        os.path.join(PYTHONDIR, 'drive_bls_pulse.py') + ' -c ' + CONFIG +
+        '\n')
     this_job.write('deactivate\n')
     this_job.write('date\n')
     this_job.flush()
@@ -64,7 +69,9 @@ for line in lines:
 
     this_submit = open(os.path.join(JOBDIR, filespec + '.condor'), 'w')
     this_submit.write('requirements = ' + REQUIREMENTS + '\n')
-    this_submit.write('executable = ' + os.path.join(JOBDIR, filespec + '.sh') + '\n')
+    this_submit.write('periodic_remove = ' + PERIODIC_REMOVE + '\n')
+    this_submit.write('executable = ' + os.path.join(JOBDIR, filespec +
+        '.sh') + '\n')
     this_submit.write('output = ' + os.path.join(OUTDIR, filespec +
         '.condor_stdout') + '\n')
     this_submit.write('error = ' + os.path.join(OUTDIR, filespec +
