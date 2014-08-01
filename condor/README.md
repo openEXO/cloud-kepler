@@ -8,3 +8,9 @@ generate your input files, run
 Two directories, `condor_input` and `condor_output`, are also created; all the 
 output (STDOUT, STDERR, and logging) from HTCondor will appear in the 
 `condor_output` directory with consistent filenames.
+
+Useful HTCondor commands
+------------------------
+
+- To remove all your jobs that are not currently running: `condor_rm -constraint 'JobStatus =!= 2'`
+- Continue this list...
