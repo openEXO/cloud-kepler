@@ -241,6 +241,7 @@ def main():
                 dfluxerr[ndx], clean_out=None)
             bundler.push_bls_output(bls_out)
 
+        if cfg['fitsout']:
             # Save the entire FITS file, including the configuration.
             bundler.push_config(cfg)
             bundler.write_file(os.path.abspath(os.path.expanduser(
