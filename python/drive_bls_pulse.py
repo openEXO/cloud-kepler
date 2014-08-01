@@ -6,16 +6,10 @@ import sys
 import pstats
 import cProfile
 import numpy as np
-<<<<<<< HEAD
-from utils import read_mapper_output, encode_array
-from bls_pulse_cython import bls_pulse as bls_pulse_cython
-=======
-import matplotlib.pyplot as plt
 from clean_signal import clean_signal
 from fits_output import BLSFitsBundler
 from utils import read_mapper_output, encode_array, setup_logging, handle_exception
 from bls_pulse_cython import bls_pulse, bin_and_detrend
->>>>>>> emprice-testing
 from argparse import ArgumentParser
 from configparser import ConfigParser, NoOptionError
 
@@ -52,9 +46,6 @@ def __init_parser(defaults):
     parser.add_argument('--direction', action='store', type=int, dest='direction',
         default=int(defaults['direction']), help='[Optional] Direction of box wave to '
         'look for. 1 = blip (top-hat), -1 = dip (drop), 0 = most significant, 2 = both.')
-    parser.add_argument('--mode', action='store', type=str, dest='mode',
-        default=defaults['mode'], help='[Optional] Implementation to use; python, '
-        'vec, or cython.')
     parser.add_argument('-f', '--printformat', action='store', type=str, dest='fmt',
         default=defaults['print_format'], help='[Optional] Format of string printed to '
         'screen. Options are \'encoded\' (base-64 binary) or \'normal\' (human-readable '
@@ -109,8 +100,8 @@ def main():
     # This is a global list of default values that will be used by the argument parser
     # and the configuration parser.
     defaults = {'min_duration':'0.0416667', 'max_duration':'0.5', 'n_bins':'100',
-        'direction':'0', 'mode':'vec', 'print_format':'encoded', 'verbose':'0',
-        'profiling':'0', 'fits_output':'1', 'fits_dir':''}
+        'direction':'0', 'print_format':'encoded', 'verbose':'0', 'profiling':'0',
+        'fits_output':'1', 'fits_dir':''}
 
     # Set up the parser for command line arguments and read them.
     parser = __init_parser(defaults)
@@ -127,7 +118,6 @@ def main():
         cfg['maxdur'] = args.maxdur
         cfg['nbins'] = args.nbins
         cfg['direction'] = args.direction
-        cfg['mode'] = args.mode
         cfg['fmt'] = args.fmt
         cfg['verbose'] = args.verbose
         cfg['profile'] = args.profile
@@ -143,7 +133,6 @@ def main():
         cfg['maxdur'] = cp.getfloat('DEFAULT', 'max_duration')
         cfg['nbins'] = cp.getint('DEFAULT', 'n_bins')
         cfg['direction'] = cp.getint('DEFAULT', 'direction')
-        cfg['mode'] = cp.get('DEFAULT', 'mode')
         cfg['fmt'] = cp.get('DEFAULT', 'print_format')
         cfg['verbose'] = cp.getboolean('DEFAULT', 'verbose')
         cfg['profile'] = cp.getboolean('DEFAULT', 'profiling')
@@ -166,35 +155,17 @@ def main():
         flux = np.array(flux, dtype='float64')
         fluxerr = np.array(fluxerr, dtype='float64')
 
-<<<<<<< HEAD
-=======
         # Don't assume the times are sorted already!
->>>>>>> emprice-testing
         ndx = np.argsort(time)
         time = time[ndx]
         flux = flux[ndx]
         fluxerr = fluxerr[ndx]
 
-<<<<<<< HEAD
-        if profile:
-=======
         if cfg['profile']:
->>>>>>> emprice-testing
             # Turn on profiling.
             pr = cProfile.Profile()
             pr.enable()
 
-<<<<<<< HEAD
-        if mode == 'python':
-            raise NotImplementedError
-        elif mode == 'vec':
-            raise NotImplementedError
-        elif mode == 'cython':
-            out = bls_pulse_cython(time, flux, fluxerr, nbins, segment, mindur, maxdur,
-                direction=direction)
-        else:
-            raise ValueError('Invalid mode: %s' % mode)
-=======
         if cfg['fitsout']:
             # Set up the FITS bundler.
             bundler = BLSFitsBundler()
@@ -220,7 +191,6 @@ def main():
                 # Cleaning iterations currently won't work unless direction is 2,
                 # so we don't loop in this case.
                 break
->>>>>>> emprice-testing
 
             srsq_dip = bls_out['srsq_dip']
             duration_dip = bls_out['duration_dip']
