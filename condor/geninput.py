@@ -69,7 +69,6 @@ for line in lines:
 
     this_submit = open(os.path.join(JOBDIR, filespec + '.condor'), 'w')
     this_submit.write('requirements = ' + REQUIREMENTS + '\n')
-    this_submit.write('periodic_remove = ' + PERIODIC_REMOVE + '\n')
     this_submit.write('executable = ' + os.path.join(JOBDIR, filespec +
         '.sh') + '\n')
     this_submit.write('output = ' + os.path.join(OUTDIR, filespec +
