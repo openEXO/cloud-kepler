@@ -13,4 +13,5 @@ Useful HTCondor commands
 ------------------------
 
 - To remove all your jobs that are not currently running: `condor_rm -constraint 'JobStatus =!= 2'`
-- Continue this list...
+- To remove (kill) a job that is running: `condor_rm <JobID> -name <MachineName>`; for example, `condor_rm 5580.0 -name science3.stsci.edu`
+- To see the number of jobs in your queue: `condor_q -submitter <user>`; for example, `condor_q -submitter eprice`
