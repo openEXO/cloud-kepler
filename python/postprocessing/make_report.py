@@ -7,7 +7,12 @@ import Image
 import pyfits
 import cStringIO
 import numpy as np
+
+# Need this backend for running on remote systems.
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, portrait
 from reportlab.lib.units import inch, cm

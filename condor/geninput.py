@@ -6,6 +6,8 @@ import sys
 if len(sys.argv) != 3:
     raise ValueError('Usage: geninput.py <infile> <configfile>')
 
+print 'Remember to source the virtualenv before running this script!'
+
 THISDIR = os.path.abspath(os.path.dirname(__file__))
 JOBDIR = os.path.join(THISDIR, 'condor_input')
 OUTDIR = os.path.join(THISDIR, 'condor_output')
@@ -24,6 +26,16 @@ except OSError:
 
 try:
     os.makedirs(OUTDIR)
+except OSError:
+    pass
+
+try:
+    os.makedirs(os.path.join(OUTDIR, 'fits'))
+except OSError:
+    pass
+
+try:
+    os.makedirs(os.path.join(OUTDIR, 'pdfs'))
 except OSError:
     pass
 
@@ -61,6 +73,10 @@ for line in lines:
         os.path.join(PYTHONDIR, 'join_quarters.py') + ' | python ' +
         os.path.join(PYTHONDIR, 'drive_bls_pulse.py') + ' -c ' + CONFIG +
         '\n')
+    this_job.write('python ' + os.path.join(PYTHONDIR, 'postprocessing',
+        'make_report.py') + ' -o ' + os.path.join(OUTDIR, 'pdfs',
+        filespec + '.pdf') + ' ' + os.path.join(OUTDIR, 'fits',
+        filespec + '.fits') + '\n')
     this_job.write('deactivate\n')
     this_job.write('date\n')
     this_job.flush()
