@@ -14,12 +14,13 @@ class BLSFitsBundler():
         '''
         Initialize the object.
         '''
+        self.prihdr = None
         self.prihdu = None
         self.cfghdu = None
         self.ext_list = []
 
 
-    def make_header(self, kic_id):
+    def make_header(self, kic_cadence_id):
         '''
         Create the FITS header. Currently, only the KIC ID of the relevant star
         is saved in this header, but other fields will be added later.
@@ -27,9 +28,10 @@ class BLSFitsBundler():
         :param kic_id: KIC ID of this star
         :type kic_id: str
         '''
-        prihdr = pyfits.Header()
-        prihdr['KIC_ID'] = kic_id
-        self.prihdu = pyfits.PrimaryHDU(header=prihdr)
+        self.prihdr = pyfits.Header()
+        kic_id, cadence = kic_cadence_id.split('_')
+        self.prihdr['KIC_ID'] = kic_id
+        self.prihdr['CADENCE'] = 'long' if cadence == 'llc' else 'short'
 
 
     def push_bls_output(self, bls_out):
@@ -67,17 +69,39 @@ class BLSFitsBundler():
         :param clean_out: Unprocessed output from ``clean_signal``
         :type clean_out: dict
         '''
+        hdr = pyfits.Header()
+
         if clean_out is not None:
-            hdr = pyfits.Header()
             keys = clean_out.keys()
             vals = clean_out.values()
 
             for k, v in zip(keys, vals):
                 hdr[k] = v
-        else:
-            hdr = None
 
-        columns = [pyfits.Column(name='Time', array=time, format='D'),
+            try:
+                hdr.comments['period'] = 'period of strongest signal [days]'
+            except KeyError:
+                pass
+
+            try:
+                hdr.comments['phase'] = 'phase of strongest periodic ' \
+                    'signal [XXXXX]'
+            except KeyError:
+                pass
+
+            try:
+                hdr.comments['duration'] = 'duration of strongest ' \
+                    'periodic signal [days]'
+            except KeyError:
+                pass
+
+            try:
+                hdr.comments['depth'] = 'depth of strongest periodic signal'
+            except KeyError:
+                pass
+
+        columns = [pyfits.Column(name='Time', array=time, format='D',
+            unit='BJD - 2454833'),
             pyfits.Column(name='Flux', array=flux, format='D'),
             pyfits.Column(name='Flux error', array=fluxerr, format='D')]
         cols = pyfits.ColDefs(columns)
@@ -100,7 +124,11 @@ class BLSFitsBundler():
         columns = [pyfits.Column(name='Parameter', array=keys, format='A20'),
             pyfits.Column(name='Value', array=vals, format='A20')]
         cols = pyfits.ColDefs(columns)
-        self.cfghdu = pyfits.TableHDU.from_columns(cols)
+
+        hdr = pyfits.Header()
+        hdr['EXTNAME'] = 'INPUT_PARAMS'
+
+        self.cfghdu = pyfits.TableHDU.from_columns(cols, header=hdr)
 
 
     def write_file(self, fname, clobber=False):
@@ -109,13 +137,27 @@ class BLSFitsBundler():
 
         :param fname: The name of the file to save
         :type fname: str
-        :param clobber: Whether to clobber an existing output file; passed directly to pyfits
+        :param clobber: Whether to clobber an existing output file; passed
+            directly to pyfits
         :type clobber: bool
         '''
-        if self.prihdu is not None:
-            hdus = [self.prihdu]
+        hdus = []
+
+        if self.prihdr is not None:
+            self.prihdr['N_EXTEN'] = (len(self.ext_list) + 1,
+                '(n_passes * 2) + 1')
+            self.prihdu = pyfits.PrimaryHDU(header=self.prihdr)
+            hdus.append(self.prihdu)
 
         if len(self.ext_list) > 0:
+            j = len(self.ext_list) / 2
+
+            for i in xrange(0,len(self.ext_list),2):
+                self.ext_list[i].header['EXTNAME'] = 'BLIP-DIP_Pass_%02d' % j
+                self.ext_list[i+1].header['EXTNAME'] = 'TIME-FLUX_Pass_%02d' % j
+
+                j -= 1
+
             hdus.extend(self.ext_list)
 
         if self.cfghdu is not None:

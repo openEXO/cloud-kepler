@@ -92,6 +92,7 @@ for i in xrange(0, len(data_hdus), 2):
         period = lchdr['period']
         phase = lchdr['phase']
         duration = lchdr['duration']
+        depth = lchdr['depth']
 
         pftime = np.mod(time, period)
         signal_mask = ((pftime > phase - 0.5 * duration) &
@@ -116,7 +117,11 @@ for i in xrange(0, len(data_hdus), 2):
         plt.xlabel(r'Time (days)')
         plt.ylabel(r'Flux')
         plt.figtext(0.05, 0.02,
-            r'P = %.4f, phi = %.2f' % (period, phase / period))
+            r'P = %.4f, phi = %.2f, W = %.2f, delta = %.2g' % (period,
+            phase / period, duration, depth))
+
+        plt.tight_layout()
+        plt.subplots_adjust(bottom=0.15)
     except KeyError:
         plt.subplot(111)
         plt.scatter(time, flux, color=color1, edgecolor=edgecolor,
@@ -127,7 +132,7 @@ for i in xrange(0, len(data_hdus), 2):
         plt.ylabel(r'Flux')
         plt.title(r'KIC' + kic_id + r', pass #%d' % count)
 
-    plt.tight_layout()
+        plt.tight_layout()
 
     imgdata = cStringIO.StringIO()
     fig.savefig(imgdata, format='png')

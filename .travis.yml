@@ -14,8 +14,7 @@ before_install:
 # Install packages
 install:
   - conda install --yes python=$TRAVIS_PYTHON_VERSION atlas numpy scipy matplotlib dateutil pip pandas=0.13.0
-  - pip install -r python/requirements.txt
-  - pip install openpyxl==1.8.6
+  - pip install -r python/requirements.txt --allow-external pil --allow-unverified pil
 
 # Run test
 script:
