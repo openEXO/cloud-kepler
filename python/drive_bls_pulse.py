@@ -245,7 +245,8 @@ def main():
             # Save the entire FITS file, including the configuration.
             bundler.push_config(cfg)
             bundler.write_file(os.path.abspath(os.path.expanduser(
-                os.path.join(cfg['fitsdir'], k + '.fits'))), clobber=True)
+                os.path.join(cfg['fitsdir'], 'KIC' + k + '.fits'))),
+                clobber=True)
 
         if cfg['profile']:
             # Turn off profiling and print results to STDERR.

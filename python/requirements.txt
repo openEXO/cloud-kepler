@@ -9,3 +9,5 @@ argparse
 configparser
 scikit-learn
 reportlab
+pil
+
