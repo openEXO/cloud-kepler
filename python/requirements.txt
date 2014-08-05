@@ -8,3 +8,4 @@ sphinx
 argparse
 configparser
 scikit-learn
+reportlab
