@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 import Image
 import pyfits
 import cStringIO
@@ -13,6 +14,8 @@ from reportlab.lib.units import inch, cm
 from reportlab.lib.utils import ImageReader
 from reportlab.platypus import Table
 from argparse import ArgumentParser
+
+sys.path.append(os.path.abspath(os.path.join(os.path.basename(__file__), '..')))
 from utils import setup_logging
 
 # Basic logging configuration.
@@ -62,7 +65,7 @@ c.setPageSize((page_width,page_height))
 page_height /= inch
 page_width /= inch
 margin = 0.1
-bigmargin = 0.5
+bigmargin = 0.25
 fig_width = page_width - 2. * margin
 fig_height = 0.5 * page_height - 2. * margin
 color1 = 'CadetBlue'
@@ -113,7 +116,7 @@ for i in xrange(0, len(data_hdus), 2):
         plt.xlabel(r'Time (days)')
         plt.ylabel(r'Flux')
         plt.figtext(0.05, 0.02,
-            r'P = %.2f, phi = %.2f' % (period, phase / period))
+            r'P = %.4f, phi = %.2f' % (period, phase / period))
     except KeyError:
         plt.subplot(111)
         plt.scatter(time, flux, color=color1, edgecolor=edgecolor,
@@ -137,24 +140,24 @@ for i in xrange(0, len(data_hdus), 2):
 
     ndx = np.argsort(-1. * bls['srsq_dip'])
     data = bls[ndx][0:15]
-    data = data[['duration_dip','depth_dip','midtime_dip']]
+    data = data[['srsq_dip','duration_dip','depth_dip','midtime_dip']]
     data = data.tolist()
-    data = map(lambda x: ['%.4f' % x[i] for i in xrange(len(x))], data)
-    data.insert(0, ['Dip dur.','Dip depth','Dip mid.'])
+    data = map(lambda x: ('%.2e %.4f %.4f %.2f' % tuple(x)).split(), data)
+    data.insert(0, ['Dip SR^2','Dip dur.','Dip depth','Dip mid.'])
 
-    table = Table(data, colWidths=(inch,inch,inch))
+    table = Table(data, colWidths=(inch,inch,inch,inch))
     w, h = table.wrapOn(c, page_width * inch, page_height * inch)
     table.drawOn(c, bigmargin * inch,
         0.5 * page_height * inch - h - bigmargin * inch)
 
     ndx = np.argsort(-1. * bls['srsq_blip'])
     data = bls[ndx][0:15]
-    data = data[['duration_blip','depth_blip','midtime_blip']]
+    data = data[['srsq_blip','duration_blip','depth_blip','midtime_blip']]
     data = data.tolist()
-    data = map(lambda x: ['%.4f' % x[i] for i in xrange(len(x))], data)
-    data.insert(0, ['Blip dur.','Blip depth','Blip mid.'])
+    data = map(lambda x: ('%.2e %.4f %.4f %.2f' % tuple(x)).split(), data)
+    data.insert(0, ['Blip SR^2','Blip dur.','Blip depth','Blip mid.'])
 
-    table = Table(data, colWidths=(inch,inch,inch))
+    table = Table(data, colWidths=(inch,inch,inch,inch))
     w, h = table.wrapOn(c, page_width * inch, page_height * inch)
     table.drawOn(c, page_width * inch - bigmargin * inch - w,
         0.5 * page_height * inch - h - bigmargin * inch)
