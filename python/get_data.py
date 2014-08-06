@@ -131,7 +131,7 @@ class MASTDataDownloader(object):
                 if printout:
                     # Write the result to STDOUT as this will be an input to a
                     # reducer that aggregates the querters together
-                    print "\t".join([kepler_id + '_' + suffix, quarter, p, stream.dstream1,
+                    print "\t".join([kepler_id + '_' + suffix, "%02d" % int(quarter), p, stream.dstream1,
                         stream.dstream2, stream.dstream3])
 
                 os.unlink(tempfile)
@@ -238,7 +238,7 @@ class DiskDataLoader(object):
                 if printout:
                     # Write the result to STDOUT as this will be an input to a
                     # reducer that aggregates the querters together
-                    print "\t".join([kepler_id + '_' + suffix, quarter, p, stream.dstream1,
+                    print "\t".join([kepler_id + '_' + suffix, "%02d" % int(quarter), p, stream.dstream1,
                         stream.dstream2, stream.dstream3])
 
 
