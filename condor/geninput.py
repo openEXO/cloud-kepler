@@ -53,6 +53,7 @@ for line in lines:
         continue
 
     kic = s[0]
+    cadence = s[2]
     filespec = 'KIC' + kic.zfill(9)
 
     all_submit.write('condor_submit ' +
@@ -76,7 +77,7 @@ for line in lines:
     this_job.write('python ' + os.path.join(PYTHONDIR, 'postprocessing',
         'make_report.py') + ' -o ' + os.path.join(OUTDIR, 'pdfs',
         filespec + '.pdf') + ' ' + os.path.join(OUTDIR, 'fits',
-        filespec + '.fits') + '\n')
+        filespec + '_' + cadence + '.fits') + '\n')
     this_job.write('deactivate\n')
     this_job.write('date\n')
     this_job.flush()

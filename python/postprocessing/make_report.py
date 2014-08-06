@@ -20,7 +20,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.platypus import Table
 from argparse import ArgumentParser
 
-sys.path.append(os.path.abspath(os.path.join(os.path.basename(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils import setup_logging
 
 # Basic logging configuration.
