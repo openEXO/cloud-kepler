@@ -1,0 +1,116 @@
+#!/bin/bash
+################################################################################
+#  Job script to spin up a semi-persistent Hadoop cluster on XSEDE/SDSC Gordon
+#
+#  INSTRUCTIONS FOR USE:
+#  1. (OPTIONAL) Modify the "#PBS -l nodes=2:ppn=16:native" and 
+#     "#PBS -l walltime=6:00:00" lines below if you'd like:  
+#     a) If you wanted to use 4 hadoop nodes in your cluster, change the 
+#        "#PBS -l nodes=2:ppn=16:native" to "#PBS -l nodes=4:ppn=16:native".  
+#        You must also change the NUMNODES=2 line below to NUMNODES=4
+#     b) If you wanted to keep your cluster alive for 12 hours, change the
+#        "#PBS -l walltime=6:00:00" to "#PBS -l walltime=12:00:00".  You must
+#        also change the WALLTIME=6 line below to WALLTIME=12
+#  2. Submit this script without any further modification
+#  3. The job will wait in the queue (qstat -u $USER to check its status), and 
+#     once it goes into the R (Running) state, a file called setenv.sourceme 
+#     will appear in your directory.  cat that file to see instructions specific
+#     to the personal Hadoop cluster you just launched.
+#  4. Follow the instructions EXACTLY.  They will instruct you to do two things:
+#     a) ssh into the primary node of your Hadoop cluster (ssh gcn-XX-YY)
+#     b) ***THIS IS IMPORTANT!***  source the configuration file to establish the
+#        correct environment settings so that you can interact with your 
+#        personal Hadoop cluster.
+#
+#  If you encounter any issues with this script, contact help@xsede.org and
+#  put "attn: Glenn" in the subject line to make sure the issue gets routed to
+#  this script's maintainer.
+#
+#  Glenn K. Lockwood, San Diego Supercomputer Center                 June 2013
+################################################################################
+#PBS -N hadoopcluster
+#PBS -l nodes=2:ppn=16:native
+#PBS -l walltime=1:00:00
+#PBS -q normal
+#PBS -j oe
+#PBS -o hadoopcluster.log
+#PBS -v Catalina_maxhops=None
+ 
+WALLTIME=1      # Specify how many hours you want your cluster to remain up.
+                # This should be the same as your "#PBS -l walltime=" line 
+                # above!
+NUMNODES=2
+
+source /etc/profile.d/modules.sh
+module load python
+module load scipy
+
+################################################################################
+### You don't need to modify anything below this point!                      ###
+################################################################################
+
+cd $PBS_O_WORKDIR
+ 
+export MY_HADOOP_HOME="/opt/hadoop/contrib/myHadoop"
+
+export HADOOP_CONF_DIR=$PBS_O_WORKDIR/$PBS_JOBID
+
+### Gordon: need to build setenv.sh from hardcoded values in configure.sh
+grep '^export' $MY_HADOOP_HOME/bin/configure.sh > setenv.sourceme
+source setenv.sourceme
+
+### Use a special version of Hadoop (e.g., 1.0.4 instead of 1.1.1).  Just 
+### uncomment the following line and point it at whatever hadoop installation
+### you want.
+#export HADOOP_HOME=/home/diag/opt/hadoop/hadoop-1.0.4
+#export PATH=/home/glock/python27/bin:/home/diag/opt/pig/pig-0.12.0/bin:\$PATH
+#export LD_LIBRARY_PATH=/home/glock/python27/lib:\$LD_LIBRARY_PATH
+
+### Overwrite $HADOOP_HOME from core MyHadoop configure.sh; provide setenv.sourceme
+sed -i 's:^export HADOOP_HOME=.*:export HADOOP_HOME='$HADOOP_HOME':' setenv.sourceme
+mynode=$(/bin/cat $PBS_NODEFILE|head -n1)
+myjob=$(/bin/cut -d. -f1 <<< $PBS_JOBID)
+cat << EOF >> setenv.sourceme
+export HADOOP_CONF_DIR=$HADOOP_CONF_DIR
+export PIG_HOME=/home/diag/opt/pig/pig-0.12.0
+export PIG_CLASSPATH=$HADOOP_CONF_DIR
+export PATH=$HADOOP_HOME/bin:\$PATH
+export PATH=/home/zonca/py/bin:/home/diag/opt/pig/pig-0.12.0/bin:\$PATH
+export LD_LIBRARY_PATH=/home/zonca/py/lib:\$LD_LIBRARY_PATH
+echo "OK, you are all set to use your Hadoop cluster now!"
+################################################################################
+################################################################################
+###
+###   Your Hadoop cluster (#$myjob) can be accessed using the following 
+###   command:
+###
+###      ssh $mynode
+###
+###   After you log in, type
+###
+###      cd $PBS_O_WORKDIR
+###      source setenv.sourceme
+###
+################################################################################
+################################################################################
+EOF
+
+### Gordon: Enable Hadoop over Infiniband (add ".ibnet0" suffix to hostnames)
+export PBS_NODEFILEZ=$(mktemp)
+sed -e 's/$/.ibnet0/g' $PBS_NODEFILE | uniq > $PBS_NODEFILEZ
+
+$MY_HADOOP_HOME/bin/configure.sh -n $NUMNODES -c $HADOOP_CONF_DIR || exit 1
+
+### Gordon: myHadoop template environment has dummy vars that must be replaced
+sed -i 's:^export HADOOP_PID_DIR=.*:export HADOOP_PID_DIR=/scratch/'$USER'/'$PBS_JOBID':' $HADOOP_CONF_DIR/hadoop-env.sh
+sed -i 's:^export TMPDIR=.*:export TMPDIR=/scratch/'$USER'/'$PBS_JOBID':' $HADOOP_CONF_DIR/hadoop-env.sh
+ 
+$HADOOP_HOME/bin/hadoop --config $HADOOP_CONF_DIR namenode -format
+ 
+$HADOOP_HOME/bin/start-all.sh
+
+sleep $(($WALLTIME*3600-180))
+
+$HADOOP_HOME/bin/stop-all.sh
+cp -Lr $HADOOP_LOG_DIR $PBS_O_WORKDIR/hadoop-logs.$PBS_JOBID
+$MY_HADOOP_HOME/bin/pbs-cleanup.sh -n $NUMNODES

@@ -1,9 +1,9 @@
-#!/usr/bin/env python
+#!/home/zonca/py/bin/python
 from mrjob.job import MRJob
 import mrjob.protocol
 import re
 
-FOLDER = "/oasis/scratch/zonca/temp_project/MAST/cloud-kepler/python/"
+FOLDER = "/oasis/scratch/zonca/temp_project/MAST/cloud-kepler-ellen/python/"
 
 class BLSPulse(MRJob):
     """For testing purposes I am using the python scripts as bash scripts,
@@ -15,9 +15,9 @@ using mrjob only for setting up Hadoop"""
 
     def steps(self):
         return [
-            self.mr(mapper_cmd=FOLDER + "download.py",
-                    reducer_cmd=FOLDER + "join_quarters.py"),
-            self.mr(reducer_cmd=FOLDER + "bls_pulse_vec_interface.py --mindur .01 --maxdur 2.0 --nbins 100 --segment 2.5 --direction -1 --printformat 'normal'")
+            self.mr(mapper_cmd="/home/zonca/py/bin/python " + FOLDER + "get_data.py mast",
+                    reducer_cmd="/home/zonca/py/bin/python " + FOLDER + "join_quarters.py"),
+            self.mr(reducer_cmd="/home/zonca/py/bin/python " + FOLDER + "drive_bls_pulse.py -c " + FOLDER + "sandbox/eprice/pulse.conf")
         ]
 
 if __name__ == '__main__':
