@@ -73,7 +73,7 @@ for line in lines:
         os.path.join(PYTHONDIR, 'get_data.py') + ' mast | python ' +
         os.path.join(PYTHONDIR, 'join_quarters.py') + ' | python ' +
         os.path.join(PYTHONDIR, 'drive_bls_pulse.py') + ' -c ' + CONFIG +
-        + ' | python ' + os.path.join(PYTHONDIR, 'make_report.py') + '\n')
+        ' | python ' + os.path.join(PYTHONDIR, 'make_report.py') + '\n')
     this_job.write('deactivate\n')
     this_job.write('date\n')
     this_job.flush()
