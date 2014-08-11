@@ -35,7 +35,7 @@ except OSError:
     pass
 
 try:
-    os.makedirs(os.path.join(OUTDIR, 'pdfs'))
+    os.makedirs(os.path.join(OUTDIR, 'fits', 'pdfs'))
 except OSError:
     pass
 
@@ -73,11 +73,7 @@ for line in lines:
         os.path.join(PYTHONDIR, 'get_data.py') + ' mast | python ' +
         os.path.join(PYTHONDIR, 'join_quarters.py') + ' | python ' +
         os.path.join(PYTHONDIR, 'drive_bls_pulse.py') + ' -c ' + CONFIG +
-        '\n')
-    this_job.write('python ' + os.path.join(PYTHONDIR, 'postprocessing',
-        'make_report.py') + ' -o ' + os.path.join(OUTDIR, 'pdfs',
-        filespec + '.pdf') + ' ' + os.path.join(OUTDIR, 'fits',
-        filespec + '_' + cadence + '.fits') + '\n')
+        + ' | python ' + os.path.join(PYTHONDIR, 'make_report.py') + '\n')
     this_job.write('deactivate\n')
     this_job.write('date\n')
     this_job.flush()

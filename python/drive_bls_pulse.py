@@ -244,9 +244,9 @@ def main():
         if cfg['fitsout']:
             # Save the entire FITS file, including the configuration.
             bundler.push_config(cfg)
-            bundler.write_file(os.path.abspath(os.path.expanduser(
-                os.path.join(cfg['fitsdir'], 'KIC' + k + '.fits'))),
-                clobber=True)
+            outfile = os.path.abspath(os.path.expanduser(os.path.join(
+                cfg['fitsdir'], 'KIC' + k + '.fits')))
+            bundler.write_file(outfile, clobber=True)
 
         if cfg['profile']:
             # Turn off profiling and print results to STDERR.
@@ -281,6 +281,8 @@ def main():
                 print "-" * 120
                 print
                 print
+            elif cfg['fmt'] == 'outfile' and cfg['fitsout']:
+                print outfile
         else:
             srsq = out['srsq']
             duration = out['duration']
@@ -309,6 +311,8 @@ def main():
                 print "-" * 80
                 print
                 print
+            elif cfg['fmt'] == 'outfile' and cfg['fitsout']:
+                print outfile
 
 
 if __name__ == '__main__':

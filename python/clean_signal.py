@@ -44,7 +44,7 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
     # size of the space.
     size = max(np.nanmax(np.absolute(out['depth_dip'])),
         np.nanmax(out['depth_blip']))
-    mean_flux_err = 0.05 * size
+    mean_flux_err = 0.1 * size
 
     # Construct an array of all the useful quantities. We will only be
     # finding clusters in the first two dimensions! The other dimensions are
@@ -82,7 +82,8 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
             continue
 
         class_member_mask = (labels == k)
-        mean_depths.append([np.mean(X[class_member_mask & core_samples_mask][:,0]),k])
+        mean_depths.append([np.mean(X[class_member_mask &
+            core_samples_mask][:,0]),k])
 
     mean_depths = np.array(mean_depths)
     ndx = np.argmin(mean_depths[:,0])
@@ -93,7 +94,7 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
     class_member_mask = (labels == k)
 
     try:
-        best_period, best_duration, best_phase = __do_period_search(X, time,
+        best_period, best_duration, best_midtimes = __do_period_search(X, time,
             class_member_mask & core_samples_mask, err_flux=mean_flux_err)
     except NoClustersError:
         # We didn't find any clusters at all. This is a good place to stop.
@@ -104,7 +105,7 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
         # Something weird is going on. Try one more time with a step of 2,
         # then quit, marking this system for further consideration.
         try:
-            best_period, best_duration, best_phase = __do_period_search(X,
+            best_period, best_duration, best_midtimes = __do_period_search(X,
                 time, class_member_mask & core_samples_mask,
                 err_flux=mean_flux_err, step=2)
         except (NoClustersError, NonIntegerClustersError):
@@ -112,8 +113,31 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
                 'like integer multiples; investigate!')
             raise RuntimeError
 
-    def boxcar(time, duration, depth, P, phase):
+    # Clean up the best guess period by minimizing "chatter" in the data.
+    def chatter(time, flux, P):
         pftime = np.mod(time, P)
+        ndx = np.argsort(pftime)
+
+        return np.sum(np.diff(flux[ndx])**2.)
+
+    ndx = np.isfinite(dflux)
+    best_period = opt.fmin(lambda x: chatter(dtime[ndx], dflux[ndx], x),
+        best_period, disp=0, xtol=1.e-5)[0]
+
+    # We know we have a problem with P/2 and P*2 aliasing; use this guess
+    # and a computation of the chatter for each possibility to choose a
+    # possibly better period.
+    temp = np.array([[p,chatter(dtime[ndx],dflux[ndx],p)] for p in
+        [best_period, best_period / 2., 2. * best_period]], dtype='float64')
+    ndx = np.argmin(temp[:,1])
+    best_period = temp[ndx,0]
+
+    logger.info('Best period: %g' % best_period)
+    best_phase = np.median(np.mod(best_midtimes, best_period))
+
+    # Fit the entire transit event with boxcar parameters.
+    def boxcar(time, duration, depth, phase):
+        pftime = np.mod(time, best_period)
 
         flux = np.zeros_like(time)
         ndx = np.where((pftime > phase - 0.5 * duration) &
@@ -122,7 +146,7 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
 
         return flux
 
-    p0 = np.array([best_duration, depth, best_period, best_phase],
+    p0 = np.array([best_duration, depth, best_phase],
         dtype='float64')
     logger.info('Best guess boxcar parameters:\n\t' + str(p0))
 
@@ -133,8 +157,7 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
 
     best_duration = pbest[0]
     best_depth = pbest[1]
-    best_period = pbest[2]
-    best_phase = pbest[3]
+    best_phase = pbest[2]
 
     pftime = np.mod(time, best_period)
     ndx = np.where((pftime > best_phase - 2. * best_duration) &
@@ -180,13 +203,7 @@ max_period_err=0.1):
 
         best_period = np.mean(Y[class_member_mask & core_samples_mask][:,1])
         best_duration = np.amax(Y[class_member_mask & core_samples_mask][:,2])
-
-        if step == 1:
-            best_phase = np.mean(np.mod(Y[class_member_mask & core_samples_mask][:,4],
-                best_period))
-        else:
-            best_phase = np.median(np.mod(Y[class_member_mask & core_samples_mask][:,4],
-                best_period))
+        best_midtimes = Y[class_member_mask & core_samples_mask][:,4]
     elif n_clusters_ == 0:
         # No clusters were found at all; let the caller handle this case.
         raise NoClustersError
@@ -222,11 +239,11 @@ max_period_err=0.1):
             best_period = candidate_periods[np.argmin(candidate_periods[:,0]),0]
             class_member_mask = (labels ==
                 int(candidate_periods[np.argmin(candidate_periods[:,0]),1]))
-            best_duration = np.amax(Y[class_member_mask & core_samples_mask][:,2])
-            best_phase = np.mean(np.mod(Y[class_member_mask & core_samples_mask][:,4],
-                best_period))
+            best_duration = np.amax(Y[class_member_mask &
+                core_samples_mask][:,2])
+            best_midtimes = Y[class_member_mask & core_samples_mask][:,4]
 
-    return best_period, best_duration, best_phase
+    return best_period, best_duration, best_midtimes
 
 
 def __do_cluster_plot(db, X):
