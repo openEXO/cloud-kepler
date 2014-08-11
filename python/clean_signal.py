@@ -44,7 +44,7 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
     # size of the space.
     size = max(np.nanmax(np.absolute(out['depth_dip'])),
         np.nanmax(out['depth_blip']))
-    mean_flux_err = 0.1 * size
+    mean_flux_err = 0.05 * size
 
     # Construct an array of all the useful quantities. We will only be
     # finding clusters in the first two dimensions! The other dimensions are
@@ -59,6 +59,7 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
 
     try:
         db = DBSCAN(eps=1., min_samples=10, metric=metric).fit(X[:,0:2])
+        #__do_cluster_plot(db, X[:,0:2])
     except ValueError:
         logger.info('Not enough points for DBSCAN to find clusters in the '
             'depth_dip/period space; stopping algorithm.')
@@ -124,14 +125,6 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
     best_period = opt.fmin(lambda x: chatter(dtime[ndx], dflux[ndx], x),
         best_period, disp=0, xtol=1.e-5)[0]
 
-    # We know we have a problem with P/2 and P*2 aliasing; use this guess
-    # and a computation of the chatter for each possibility to choose a
-    # possibly better period.
-    temp = np.array([[p,chatter(dtime[ndx],dflux[ndx],p)] for p in
-        [best_period, best_period / 2., 2. * best_period]], dtype='float64')
-    ndx = np.argmin(temp[:,1])
-    best_period = temp[ndx,0]
-
     logger.info('Best period: %g' % best_period)
     best_phase = np.median(np.mod(best_midtimes, best_period))
 
@@ -184,6 +177,7 @@ max_period_err=0.1):
     # around integer multiples of that value.
     try:
         db = DBSCAN(eps=1., min_samples=10, metric=metric).fit(Y[:,0:2])
+        #__do_cluster_plot(db, Y[:,0:2])
     except ValueError:
         logger.info('Not enough points for DBSCAN to find clusters in the '
             'depth_dip/period space; stopping algorithm.')
