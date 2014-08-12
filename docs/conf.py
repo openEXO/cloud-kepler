@@ -11,17 +11,19 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
-import mock
+import mock, sys, os
+MOCK_MODULES = ['numpy', 'scipy', 'scipy.linalg', 'scipy.interpolate', 'scipy.ndimage',
+'scipy.ndimage.interpolation', 'scipy.optimize', 'pandas', 'matplotlib',
+'matplotlib.pyplot', 'pyfits', 'pylab', 'bls_pulse_cython', 'detrend', 'configparser',
+'reportlab', 'Image']
+for mod_name in MOCK_MODULES:
+sys.modules[mod_name] = mock.Mock()
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('../python'))
-
-MOCK_MODULES = ['bls_pulse_cython','detrend']
-sys.modules.update((mod_name, mock.Mock()) for mod_name in MOCK_MODULES)
 
 # -- General configuration -----------------------------------------------------
 
