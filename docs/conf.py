@@ -17,7 +17,7 @@ MOCK_MODULES = ['numpy', 'scipy', 'scipy.linalg', 'scipy.interpolate', 'scipy.nd
 'matplotlib.pyplot', 'pyfits', 'pylab', 'bls_pulse_cython', 'detrend', 'configparser',
 'reportlab', 'Image']
 for mod_name in MOCK_MODULES:
-sys.modules[mod_name] = mock.Mock()
+    sys.modules[mod_name] = mock.Mock()
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
