@@ -17,7 +17,7 @@ MOCK_MODULES = ['numpy', 'numpy.polynomial', 'scipy', 'scipy.linalg',
 'scipy.optimize', 'scipy.stats', 'scipy.spatial', 'pandas', 'matplotlib',
 'matplotlib.pyplot', 'matplotlib.patches', 'pyfits', 'pylab',
 'bls_pulse_cython', 'detrend', 'configparser', 'reportlab', 'Image',
-'sklearn.cluster']
+'sklearn', 'sklearn.cluster']
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 
