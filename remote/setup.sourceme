@@ -8,5 +8,5 @@ source py/bin/activate
 
 PYVERS=$(python -c "import sys; print '.'.join(map(str, sys.version_info[0:2]))")
 export PYTHONPATH="py/lib/python${PYVERS}/site-packages"
-pip install -r ../python/requirements.txt
+pip install --allow-unverified pil --allow-external pil -r ../python/requirements.txt
 

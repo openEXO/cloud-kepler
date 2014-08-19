@@ -70,7 +70,8 @@ for line in lines:
     this_job.write('export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:' +
         LD_LIBRARY_PATH + '\n')
     this_job.write('echo "' + line.rstrip() + '" | python ' +
-        os.path.join(PYTHONDIR, 'get_data.py') + ' mast | python ' +
+        os.path.join(PYTHONDIR, 'get_data.py') + ' disk ' +
+        '/ifs/public/mast/kepler/lightcurves | python ' +
         os.path.join(PYTHONDIR, 'join_quarters.py') + ' | python ' +
         os.path.join(PYTHONDIR, 'drive_bls_pulse.py') + ' -c ' + CONFIG +
         ' | python ' + os.path.join(PYTHONDIR, 'make_report.py') + '\n')
