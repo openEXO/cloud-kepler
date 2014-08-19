@@ -6,6 +6,7 @@ import sys
 import pstats
 import cProfile
 import numpy as np
+import matplotlib.pyplot as plt
 from clean_signal import clean_signal
 from fits_output import BLSFitsBundler
 from utils import read_mapper_output, encode_array, setup_logging, \
@@ -187,7 +188,8 @@ def main():
             # Set up the FITS bundler.
             bundler = BLSFitsBundler()
             bundler.make_header(k)
-            clean_out = None
+
+        clean_out = None
 
         for i in xrange(cfg['clean_max']):
             # Do ALL detrending and binning here. The main algorithm
@@ -220,8 +222,12 @@ def main():
             midtime_blip = bls_out['midtime_blip']
 
             try:
-                clean_out = clean_signal(time, flux, dtime, dflux, dfluxerr,
-                    bls_out)
+                if clean_out is not None:
+                    clean_out = clean_signal(time, flux, dtime, dflux, dfluxerr,
+                        bls_out, guess_period=clean_out['period'])
+                else:
+                    clean_out = clean_signal(time, flux, dtime, dflux, dfluxerr,
+                        bls_out)
             except RuntimeError:
                 break
 

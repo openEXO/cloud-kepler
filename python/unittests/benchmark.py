@@ -90,9 +90,12 @@ def __generate_figure(infile='unittests/benchmark.npz'):
     vec_times = data['vec_times']
     cython_times = data['cython_times']
 
-    plt.plot(baselines, python_times, color='#bd553c', lw=2., label='Pure Python')
-    plt.plot(baselines, vec_times, color='#8ab138', lw=2., label='Vectorized Python')
-    plt.plot(baselines, cython_times, color='#2d537b', lw=2., label='Cython')
+    plt.plot(baselines, python_times, color='#bd553c', lw=3.,
+        label='Pure Python', marker='o')
+    plt.plot(baselines, vec_times, color='#8ab138', lw=3.,
+        label='Vectorized Python', marker='o')
+    plt.plot(baselines, cython_times, color='#2d537b', lw=3., label='Cython',
+        marker='o')
     plt.legend(loc='best')
     plt.xscale('log')
     plt.yscale('log')

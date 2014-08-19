@@ -179,13 +179,14 @@ int nbins, double segsize, int detrend_order=3, int maxgap=100):
         sfluxerr = bfluxerr[j:j+nbins]
         ssamples = bsamples[j:j+nbins]
 
-        # Perform the actual binning. This function writes directly to the binned
-        # arrays in memory. The variable `save` keeps up with the index of the next
-        # segment start so that we can bin in O(N) time (only need to loop through
-        # the array once). This is also why the entire array is binned and detrended
-        # at once.
-        do_bin_segment(&time[0], &flux[0], &fluxerr[0], nbins, segsize, nsamples, i, &save,
-            &stime[0], &sflux[0], &sfluxerr[0], &ssamples[0], &start, &end)
+        # Perform the actual binning. This function writes directly to the
+        # binned arrays in memory. The variable `save` keeps up with the index
+        # of the next segment start so that we can bin in O(N) time (only need
+        # to loop through the array once). This is also why the entire array is
+        # binned and detrended at once.
+        do_bin_segment(&time[0], &flux[0], &fluxerr[0], nbins, segsize,
+            nsamples, i, &save, &stime[0], &sflux[0], &sfluxerr[0],
+            &ssamples[0], &start, &end)
 
         # Correct the segment start and end times by the constant offset found
         # earlier so they are on the same scale as the input time.

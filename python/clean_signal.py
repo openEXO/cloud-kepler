@@ -5,6 +5,8 @@ import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
+import scipy.interpolate as interp
+import scipy.signal as signal
 from sklearn.cluster import DBSCAN
 from utils import setup_logging
 
@@ -20,7 +22,7 @@ class NonIntegerClustersError(Exception):
     pass
 
 
-def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
+def clean_signal(time, flux, dtime, dflux, dfluxerr, out, guess_period=None):
     '''
     Remove possible eclipsing binary signals from a light curve. This works
     best on deep, strongly periodic signals, so it is unlikely to clean
@@ -119,43 +121,69 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out):
         pftime = np.mod(time, P)
         ndx = np.argsort(pftime)
 
-        return np.sum(np.diff(flux[ndx])**2.)
+        return np.sum(np.diff(flux[ndx])**2. / np.diff(time[ndx])**2.)
 
-    ndx = np.isfinite(dflux)
-    best_period = opt.fmin(lambda x: chatter(dtime[ndx], dflux[ndx], x),
-        best_period, disp=0, xtol=1.e-5)[0]
+    mask = np.isfinite(dflux)
+    res = opt.minimize(lambda x: chatter(dtime[mask], dflux[mask], x),
+        best_period, tol=1.e-7, options={'disp':False})
+    best_period = res.x[0]
+
+    def smooth(x, window_len):
+        s = np.r_[x[window_len-1:0:-1],x,x[-1:-window_len:-1]]
+        w = np.ones(window_len,'d')
+        y = np.convolve(w / w.sum(), s, mode='valid')
+        return y[(window_len/2-1):-(window_len/2+1)]
+
+    def plavchan(time, flux, period):
+        pftime = np.mod(time, period)
+        ndx = np.argsort(pftime)
+        f = interp.interp1d(pftime[ndx], flux[ndx])
+        new_t = np.linspace(time[0], time[-1], time.shape[0])
+        new_f = smooth(f(pftime[ndx]), 11)
+        f = interp.interp1d(pftime[ndx], new_f)
+
+        chisq = (flux - f(pftime))**2.
+        ndx = np.argsort(chisq)
+        return np.sum(chisq[ndx][-26:-1])
+
+    best_period = opt.fmin(lambda x: plavchan(dtime[mask], dflux[mask], x),
+        best_period, xtol=1.e-6)[0]
 
     logger.info('Best period: %g' % best_period)
     best_phase = np.median(np.mod(best_midtimes, best_period))
 
     # Fit the entire transit event with boxcar parameters.
-    def boxcar(time, duration, depth, phase):
-        pftime = np.mod(time, best_period)
+    def boxcar(time, duration, depth, phase, period):
+        pftime = np.mod(time - phase - period / 2., period) / period
 
         flux = np.zeros_like(time)
-        ndx = np.where((pftime > phase - 0.5 * duration) &
-            (pftime < phase + 0.5 * duration))
-        flux[ndx] = depth
+        mask = ((pftime > 0.5 - 0.5 * duration / period) &
+            (pftime < 0.5 + 0.5 * duration / period))
+        flux[mask] = depth
 
         return flux
 
-    p0 = np.array([best_duration, depth, best_phase],
+    p0 = np.array([best_duration, depth, best_phase, best_period],
         dtype='float64')
     logger.info('Best guess boxcar parameters:\n\t' + str(p0))
 
     ndx = np.where(np.isfinite(dflux))
-    f = lambda x: dflux[ndx] - boxcar(dtime[ndx], *x)
-    pbest = opt.leastsq(f, p0)[0]
+    f = lambda x: np.sum((dflux[ndx] - boxcar(dtime[ndx], *x))**2.)
+    pbest = opt.fmin(f, p0)
     logger.info('Best fit boxcar parameters:\n\t' + str(pbest))
 
     best_duration = pbest[0]
     best_depth = pbest[1]
     best_phase = pbest[2]
+    best_period = pbest[3]
 
-    pftime = np.mod(time, best_period)
-    ndx = np.where((pftime > best_phase - 2. * best_duration) &
-        (pftime < best_phase + 2. * best_duration))
-    flux[ndx] = np.nan
+    pftime = np.mod(time - best_phase - best_period / 2., best_period) / best_period
+    mask = ((pftime > 0.5 - 2. * best_duration / best_period) &
+        (pftime < 0.5 + 2. * best_duration / best_period))
+    plt.scatter(pftime[~mask], flux[~mask], color='CadetBlue')
+    plt.scatter(pftime[mask], flux[mask], color='Chartreuse')
+    plt.show()
+    flux[mask] = np.nan
 
     return dict(period=best_period, duration=best_duration, depth=best_depth,
         phase=best_phase)
