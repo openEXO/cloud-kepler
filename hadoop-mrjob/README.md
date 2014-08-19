@@ -24,14 +24,28 @@ If successful, you should see a (py) in front of your unix prompt.
 First it is necessary to start Hadoop on Gordon using:
 
 ```
-qsub hadoop-cluster.qsub
+    qsub hadoop-cluster.qsub
+
 ```
+which is inside the folder "hadoop-mrjob" at the main level.
 
 The original script is: <https://github.com/sdsc/sdsc-user/blob/master/jobscripts/gordon/hadoop-cluster.qsub>
 
-Once the job starts, it creates a file `setenv.sourceme` in the folder it was submitted from.
+You will need to monitor the output of:
 
-Read the instructions in the file to connect to the Hadoop head node.
+```
+    qstat -u <your_user_name>
+```
+
+One good way to do this is via the following command:
+
+    watch -n 2 qstat -u <your_user_name>
+
+Once the job starts (the "S" column goes from 'Q' to 'R'), it creates a file `setenv.sourceme` in the folder it was submitted from.
+
+Read the instructions in `setenv.sourceme` to connect to the Hadoop head node.  Once ssh'd into the compute node, you may want to activate the python virtual environment again:
+
+    source /home/zonca/py/bin/activate
 
 ## Submit an example word count job to Hadoop
 
