@@ -94,14 +94,14 @@ def main(err_on_fail=True, allow_straddling=True, ofile=None):
                     ', allowed diff. ' + str(midtime_atol)
                 print errstring
                 raise RuntimeError
-            elif diff_depth / depth[j] > depth_rtol:
+            elif abs(diff_depth / depth[j]) > depth_rtol:
                 errstring += 'DEPTH: Expected ' + str(depth[j]) + ', measured ' + \
                     str(bls_dp[ndx]) + ', rel. diff. ' + \
                     str(diff_depth / depth[j] * 100) + '%, allowed rel. diff. ' + \
                     str(depth_rtol * 100) + '%'
                 print errstring
                 raise RuntimeError
-            elif diff_duration / duration[j] > duration_rtol:
+            elif abs(diff_duration / duration[j]) > duration_rtol:
                 errstring += 'DURATION: Expected ' + str(duration[j]) + ', measured ' + \
                     str(bls_du[ndx]) + ', rel. diff. ' + \
                     str(diff_duration / duration[j] * 100) + '%, allowed diff. ' + \
