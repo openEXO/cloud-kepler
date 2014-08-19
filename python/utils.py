@@ -268,23 +268,3 @@ def decode_array(s):
     '''
     return json.loads(zlib.decompress(base64.b64decode(s)))
 
-
-def extreme(a, b):
-    '''
-    Calculate the extreme of two numbers; ``a`` if ``abs(a) > abs(b)``.
-
-    :rtype: float
-    '''
-    return a if (abs(a) > abs(b)) else b
-
-
-def extreme_vec(arr):
-    '''
-    Calculate the extreme of an array; defined as the value with the
-    greatest absolute value.
-
-    :rtype: float
-    '''
-    ndx = np.nanargmax(np.absolute(arr))
-    return arr[ndx]
-
