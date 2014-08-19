@@ -180,9 +180,6 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out, guess_period=None):
     pftime = np.mod(time - best_phase - best_period / 2., best_period) / best_period
     mask = ((pftime > 0.5 - 2. * best_duration / best_period) &
         (pftime < 0.5 + 2. * best_duration / best_period))
-    plt.scatter(pftime[~mask], flux[~mask], color='CadetBlue')
-    plt.scatter(pftime[mask], flux[mask], color='Chartreuse')
-    plt.show()
     flux[mask] = np.nan
 
     return dict(period=best_period, duration=best_duration, depth=best_depth,
