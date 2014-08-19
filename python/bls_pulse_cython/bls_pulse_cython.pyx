@@ -325,7 +325,7 @@ np.ndarray[double, ndim=1, mode='c'] depth_blip, np.ndarray[double, ndim=1, mode
     srsq_blip[:] = 0.
     duration_blip[:] = np.nan
     depth_dip[:] =  np.nan
-    midtime_dip[:] = np.nan
+    midtime_blip[:] = np.nan
 
     # the total number of points that were binned
     n = np.sum(samples)
