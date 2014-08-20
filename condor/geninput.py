@@ -2,9 +2,18 @@
 
 import os
 import sys
+import random
+import string
+from argparse import ArgumentParser
+from itertools import izip_longest
 
-if len(sys.argv) != 3:
-    raise ValueError('Usage: geninput.py <infile> <configfile>')
+
+parser = ArgumentParser()
+parser.add_argument('infile', help='Input file, one star per line')
+parser.add_argument('configfile', help='Configuration file for the run')
+parser.add_argument('-n', dest='n', help='Number of stars per process',
+    type=int, action='store', default=1)
+args = parser.parse_args()
 
 print 'Remember to source the virtualenv before running this script!'
 
@@ -13,7 +22,7 @@ JOBDIR = os.path.join(THISDIR, 'condor_input')
 OUTDIR = os.path.join(THISDIR, 'condor_output')
 PYTHONDIR = os.path.abspath(os.path.join(THISDIR, '../python'))
 REMOTEDIR = os.path.abspath(os.path.join(THISDIR, '../remote'))
-CONFIG = os.path.abspath(sys.argv[2])
+CONFIG = os.path.abspath(args.configfile)
 
 LD_LIBRARY_PATH='/usr/stsci/ssbx/python/lib:/usr/lib64'
 REQUIREMENTS='machine==\"science3.stsci.edu\" || ' \
@@ -42,19 +51,27 @@ except OSError:
 all_submit = open(os.path.join(THISDIR, 'condor_submit_all.sh'), 'w')
 all_submit.write('#!/bin/bash\n\n')
 
-f = open(sys.argv[1], 'r')
+f = open(args.infile, 'r')
 lines = f.readlines()
 f.close()
 
-for line in lines:
-    s = line.split()
 
-    if len(s) < 3:
-        continue
+################################################################################
+# Group the stars as the user specifies with `n`
+################################################################################
 
-    kic = s[0]
-    cadence = s[2]
-    filespec = 'KIC' + kic.zfill(9)
+def grouped(iterable, n):
+    return izip_longest(*[iter(iterable)]*n, fillvalue='')
+
+for x in grouped(lines, args.n):
+    if args.n == 1:
+        s = x[0].split()
+        if len(s) < 3:
+            continue
+        kic = s[0]
+        filespec = 'KIC' + kic.zfill(9)
+    else:
+        filespec = ''.join(random.choice(string.lowercase) for i in range(12))
 
     all_submit.write('condor_submit ' +
         os.path.join(JOBDIR, filespec + '.condor') + '\n')
@@ -69,12 +86,19 @@ for line in lines:
         'site-packages') + '\n')
     this_job.write('export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:' +
         LD_LIBRARY_PATH + '\n')
-    this_job.write('echo "' + line.rstrip() + '" | python ' +
-        os.path.join(PYTHONDIR, 'get_data.py') + ' disk ' +
-        '/ifs/public/mast/kepler/lightcurves | python ' +
-        os.path.join(PYTHONDIR, 'join_quarters.py') + ' | python ' +
-        os.path.join(PYTHONDIR, 'drive_bls_pulse.py') + ' -c ' + CONFIG +
-        ' | python ' + os.path.join(PYTHONDIR, 'make_report.py') + '\n')
+
+    for line in x:
+        s = line.split()
+        if len(s) < 3:
+            continue
+
+        this_job.write('echo "' + line.rstrip() + '" | python ' +
+            os.path.join(PYTHONDIR, 'get_data.py') + ' disk ' +
+            '/ifs/public/mast/kepler/lightcurves | python ' +
+            os.path.join(PYTHONDIR, 'join_quarters.py') + ' | python ' +
+            os.path.join(PYTHONDIR, 'drive_bls_pulse.py') + ' -c ' + CONFIG +
+            ' | python ' + os.path.join(PYTHONDIR, 'make_report.py') + '\n')
+
     this_job.write('deactivate\n')
     this_job.write('date\n')
     this_job.flush()
