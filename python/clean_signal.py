@@ -85,8 +85,7 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out, guess_period=None):
             continue
 
         class_member_mask = (labels == k)
-        mean_depths.append([np.mean(X[class_member_mask &
-            core_samples_mask][:,0]),k])
+        mean_depths.append([np.mean(X[class_member_mask][:,0]),k])
 
     mean_depths = np.array(mean_depths)
     ndx = np.argmin(mean_depths[:,0])
@@ -146,8 +145,8 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out, guess_period=None):
         ndx = np.argsort(chisq)
         return np.sum(chisq[ndx][-26:-1])
 
-    best_period = opt.fmin(lambda x: plavchan(dtime[mask], dflux[mask], x),
-        best_period, xtol=1.e-6)[0]
+    #best_period = opt.fmin(lambda x: plavchan(dtime[mask], dflux[mask], x),
+    #    best_period, xtol=1.e-6, disp=0)[0]
 
     logger.info('Best period: %g' % best_period)
     best_phase = np.median(np.mod(best_midtimes, best_period))
@@ -169,7 +168,7 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out, guess_period=None):
 
     ndx = np.where(np.isfinite(dflux))
     f = lambda x: np.sum((dflux[ndx] - boxcar(dtime[ndx], *x))**2.)
-    pbest = opt.fmin(f, p0)
+    pbest = opt.fmin(f, p0, disp=0)
     logger.info('Best fit boxcar parameters:\n\t' + str(pbest))
 
     best_duration = pbest[0]
@@ -236,8 +235,7 @@ max_period_err=0.1):
             if kk == -1:
                 continue
             class_member_mask = (labels == kk)
-            candidate_periods.append([np.mean(Y[class_member_mask &
-                core_samples_mask][:,1]), kk])
+            candidate_periods.append([np.mean(Y[class_member_mask][:,1]), kk])
 
         # Check for integer multiples in the candidate periods list. The
         # modulus by the minimum one should be sufficient.
@@ -258,9 +256,8 @@ max_period_err=0.1):
             best_period = candidate_periods[np.argmin(candidate_periods[:,0]),0]
             class_member_mask = (labels ==
                 int(candidate_periods[np.argmin(candidate_periods[:,0]),1]))
-            best_duration = np.amax(Y[class_member_mask &
-                core_samples_mask][:,2])
-            best_midtimes = Y[class_member_mask & core_samples_mask][:,4]
+            best_duration = np.amax(Y[class_member_mask][:,2])
+            best_midtimes = Y[class_member_mask][:,4]
 
     return best_period, best_duration, best_midtimes
 

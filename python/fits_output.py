@@ -34,7 +34,7 @@ class BLSFitsBundler():
         self.prihdr['CADENCE'] = 'long' if cadence == 'llc' else 'short'
 
 
-    def push_bls_output(self, bls_out):
+    def push_bls_output(self, bls_out, segstart, segend):
         '''
         Push the output from a single run of the BLS pulse algorithm onto
         a "stack". This way, the last run of the algorithm will appear first
@@ -42,10 +42,18 @@ class BLSFitsBundler():
 
         :param bls_out: Unprocessed output from ``bls_pulse_*``
         :type bls_out: dict
+        :param segstart: Start time of segments
+        :type segstart: np.ndarray
+        :param segend: End time of segments
+        :type segend: np.ndarray
         '''
         keys = bls_out.keys()
         vals = bls_out.values()
         columns = []
+
+        columns.append(pyfits.Column(name='segstart', array=segstart,
+            format='D'))
+        columns.append(pyfits.Column(name='segend', array=segend, format='D'))
 
         for k, v in zip(keys, vals):
             columns.append(pyfits.Column(name=k, array=v, format='D'))

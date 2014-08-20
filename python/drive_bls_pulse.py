@@ -235,7 +235,7 @@ def main():
                 ndx = np.where(np.isfinite(dflux))
                 bundler.push_detrended_lightcurve(dtime[ndx], dflux[ndx],
                     dfluxerr[ndx], clean_out=clean_out)
-                bundler.push_bls_output(bls_out)
+                bundler.push_bls_output(bls_out, segstart, segend)
 
         if cfg['fitsout'] and bls_out is not None:
             # Save the detrended light curve and BLS output from the last
@@ -245,7 +245,7 @@ def main():
             ndx = np.where(np.isfinite(dflux))
             bundler.push_detrended_lightcurve(dtime[ndx], dflux[ndx],
                 dfluxerr[ndx], clean_out=None)
-            bundler.push_bls_output(bls_out)
+            bundler.push_bls_output(bls_out, segstart, segend)
 
         if cfg['fitsout']:
             # Save the entire FITS file, including the configuration.
