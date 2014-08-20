@@ -2,10 +2,11 @@
 # -*- coding: utf-8 -*-
 
 '''
-Kepler FITS retrieval.  This module will retrieve Kepler lightcurve FITS files based on
-a specified source.  It defines a class called DataStream that stores the relevant lightcurve
-data for one-or-many Kepler targets and one-or-many Quarters as a 64-bit encoded string to be
-passed along to other modules directly through memory.
+Kepler FITS retrieval.  This module will retrieve Kepler lightcurve FITS files
+based on a specified source.  It defines a class called DataStream that stores
+the relevant lightcurve data for one-or-many Kepler targets and one-or-many
+Quarters as a 64-bit encoded string to be passed along to other modules directly
+through memory.
 Reference: http://www.michael-noll.com/tutorials/writing-an-hadoop-mapreduce-program-in-python/
 '''
 
@@ -17,17 +18,18 @@ import pyfits
 import numpy as np
 from contextlib import contextmanager
 from argparse import ArgumentParser
-from utils import encode_array, setup_logging, handle_exception
+from utils import encode_array, decode_array, setup_logging, handle_exception
 
 # Basic logging configuration.
 logger = setup_logging(__file__)
 
 
-############################################################################################
-# Define the possible timestamps in the filename for a given Quarter as a global constant.
-# This allows the software to determine what Quarter a given file came from without having
-# to read the FITS header (since these timestamps are in the file name).
-############################################################################################
+################################################################################
+# Define the possible timestamps in the filename for a given Quarter as a
+# global constant. This allows the software to determine what Quarter a given
+# file came from without having to read the FITS header (since these timestamps
+# are in the file name).
+################################################################################
 NUM_QUARTERS = 17
 
 LONG_QUARTER_PREFIXES = {'0':['2009131105131'],
@@ -67,7 +69,7 @@ SHORT_QUARTER_PREFIXES = {'0':['2009131110544'],
                           '15':['2012310112549','2012341132017','2013011073258'],
                           '16':['2013017113907','2013065031647','2013098041711'],
                           '17':['2013121191144','2013131215648']}
-############################################################################################
+################################################################################
 
 
 class DataStream:
@@ -77,8 +79,8 @@ class DataStream:
 
     def __init__(self, arrays=None):
         '''
-        Default the data stream to be an empty string; otherwise, use the contents of
-        `fits_stream`, which should be a NumPy array.
+        Default the data stream to be an empty string; otherwise, use the
+        contents of `fits_stream`, which should be a NumPy array.
         '''
         if arrays is None:
             self.dstream1 = ''
@@ -108,7 +110,7 @@ class MASTDataDownloader(object):
     Retrieves data from the MAST archive over the web.
     '''
 
-    def __init__(self, data, printout=True):
+    def __init__(self, data, outstream=None):
         for kepler_id, quarter, suffix in data:
             # Fix kepler_id missing zero-padding
             if len(kepler_id) < 9:
@@ -121,25 +123,27 @@ class MASTDataDownloader(object):
                 # Download the requested URL.
                 try:
                     fits_stream = self.__download_file_serialize(p)
-                    tempfile, stream = self.__process_fits_object(fits_stream)
+                    tempfile, self.stream = \
+                        self.__process_fits_object(fits_stream)
                 except RuntimeError:
                     logger.error('Cannot download: ' + p)
                     continue
 
-                if printout:
+                if outstream is not None:
                     # Write the result to STDOUT as this will be an input to a
                     # reducer that aggregates the querters together
-                    print "\t".join([kepler_id + '_' + suffix, quarter, p,
-                        stream.dstream1, stream.dstream2, stream.dstream3])
+                    outstream.write("\t".join([kepler_id + '_' + suffix,
+                        quarter, p, self.stream.dstream1, self.stream.dstream2,
+                        self.stream.dstream3]) + '\n')
 
                 os.unlink(tempfile)
 
 
     def __download_file_serialize(self, uri):
         '''
-        Downloads the FITS file at the given URI; if that fails, attempts to download the
-        file from the backup URI. On success, returns a raw character stream. On failure,
-        output is an empty string.
+        Downloads the FITS file at the given URI; if that fails, attempts to
+        download the file from the backup URI. On success, returns a raw
+        character stream. On failure, output is an empty string.
         '''
         try:
             response = urllib2.urlopen(uri)
@@ -159,12 +163,14 @@ class MASTDataDownloader(object):
 
         if suffix == 'llc':
             for p in LONG_QUARTER_PREFIXES[quarter]:
-                path.append('http://archive.stsci.edu/pub/kepler/lightcurves/' + prefix + '/' + \
-                    kepler_id + '/kplr' + kepler_id + '-' + p + '_' + suffix + '.fits')
+                path.append('http://archive.stsci.edu/pub/kepler/lightcurves/' \
+                    + prefix + '/' + kepler_id + '/kplr' + kepler_id + '-' + \
+                    p + '_' + suffix + '.fits')
         elif suffix == 'slc':
             for p in SHORT_QUARTER_PREFIXES[quarter]:
-                path.append('http://archive.stsci.edu/pub/kepler/lightcurves/' + prefix + '/' + \
-                    kepler_id + '/kplr' + kepler_id + '-' + p + '_' + suffix + '.fits')
+                path.append('http://archive.stsci.edu/pub/kepler/lightcurves/' \
+                    + prefix + '/' + kepler_id + '/kplr' + kepler_id + '-' + \
+                    p + '_' + suffix + '.fits')
         else:
             raise ValueError('Invalid cadence key: %s' % suffix)
 
@@ -184,8 +190,8 @@ class MASTDataDownloader(object):
             bjd_trunci = float(pyfits.getval(tempfilename, 'bjdrefi', ext=1))
             bjd_truncf = float(pyfits.getval(tempfilename, 'bjdreff', ext=1))
 
-            # Note: Times are updated to be in proper reduced barycentric Julian date,
-            # RBJD = BJD - 2400000.0
+            # Note: Times are updated to be in proper reduced barycentric
+            # Julian date, RBJD = BJD - 2400000.0
             time = fitsdata['TIME'] + bjd_trunci + bjd_truncf - 2400000.
             pdcflux = fitsdata['PDCSAP_FLUX']
             pdcerror = fitsdata['PDCSAP_FLUX_ERR']
@@ -194,15 +200,16 @@ class MASTDataDownloader(object):
             ndx = np.where(errorflag == 0)
             retval = DataStream(arrays=(time[ndx], pdcflux[ndx], pdcerror[ndx]))
 
-            # Fix for windows, returns the filename into main so that os.unlink can be called there
+            # Fix for windows, returns the filename into main so that os.unlink
+            # can be called there
             return test, retval
 
 
     @contextmanager
     def __tempinput(self, data):
         '''
-        Handle old legacy code that absolutely demands a filename instead of streaming
-        file content.
+        Handle old legacy code that absolutely demands a filename instead of
+        streaming file content.
         '''
         temp = tempfile.NamedTemporaryFile(delete=False)
         temp.write(data)
@@ -212,11 +219,11 @@ class MASTDataDownloader(object):
 
 class DiskDataLoader(object):
     '''
-    Retrieves data from a disk given a specified root directory (relative or absolute).
-    The FITS files are expected to be under that directory with the pathspec
-    <root directory>/<4-digit short KepID>/<full KepID>/
+    Retrieves data from a disk given a specified root directory (relative or
+    absolute). The FITS files are expected to be under that directory with the
+    pathspec <root directory>/<4-digit short KepID>/<full KepID>/
     '''
-    def __init__(self, data, datapath, printout=True):
+    def __init__(self, data, datapath, outstream=None):
         for kepler_id, quarter, suffix in data:
             # Fix kepler_id missing zero-padding
             if len(kepler_id) < 9:
@@ -228,33 +235,35 @@ class DiskDataLoader(object):
             for p in path:
                 # Read in the FITS file and create the DataStream object.
                 try:
-                    stream = self.__read_fits_file(p, kepler_id)
+                    self.stream = self.__read_fits_file(p, kepler_id)
                 except RuntimeError:
                     logger.error("Cannot read: " + p)
                     continue
 
-                if printout:
+                if outstream is not None:
                     # Write the result to STDOUT as this will be an input to a
                     # reducer that aggregates the querters together
-                    print "\t".join([kepler_id + '_' + suffix, quarter, p, stream.dstream1,
-                        stream.dstream2, stream.dstream3])
+                    outstream.write("\t".join([kepler_id + '_' + suffix,
+                        quarter, p, self.stream.dstream1, self.stream.dstream2,
+                        self.stream.dstream3]) + '\n')
 
 
     def __get_fits_path(self, datapath, kepler_id, quarter, suffix):
         '''
-        Construct file path on disk, given the base path, Kepler ID, and quarter.
+        Construct file path on disk, given the base path, Kepler ID, and
+        quarter.
         '''
         prefix = kepler_id[0:4]
         path = []
 
         if suffix == 'llc':
             for p in LONG_QUARTER_PREFIXES[quarter]:
-                path.append(os.path.join(datapath, prefix, kepler_id, 'kplr' + kepler_id + '-' +
-                    p + '_' + suffix + '.fits'))
+                path.append(os.path.join(datapath, prefix, kepler_id, 'kplr' + \
+                    kepler_id + '-' + p + '_' + suffix + '.fits'))
         elif suffix == 'slc':
             for p in SHORT_QUARTER_PREFIXES[quarter]:
-                path.append(os.path.join(datapath, prefix, kepler_id, 'kplr' + kepler_id + '-' +
-                    p + '_' + suffix + '.fits'))
+                path.append(os.path.join(datapath, prefix, kepler_id, 'kplr' + \
+                    kepler_id + '-' + p + '_' + suffix + '.fits'))
         else:
             raise ValueError('Invalid cadence key: %s' % suffix)
 
@@ -270,10 +279,10 @@ class DiskDataLoader(object):
         except IOError:
             raise RuntimeError
 
-        # Otherwise we've successfully opened the FITS file, so read the data, close the FITS
-        # file, and create the DataStream object.
-        # Note: Times are updated to be in proper reduced barycentric Julian date,
-        # RBJD = BJD - 2400000.0
+        # Otherwise we've successfully opened the FITS file, so read the data,
+        # close the FITS file, and create the DataStream object.
+        # Note: Times are updated to be in proper reduced barycentric Julian
+        # date, RBJD = BJD - 2400000.0
         fitsdata = hdulist[1].data
         bjd_trunci = float(hdulist[1].header['bjdrefi'])
         bjd_truncf = float(hdulist[1].header['bjdreff'])
@@ -289,23 +298,24 @@ class DiskDataLoader(object):
         return retval
 
 
-def main(source, datapath):
+def main(source, datapath, instream=sys.stdin, outstream=None):
     '''
     Get data from the specified source and optional data path.
 
     :param source: Either "disk" or "mast"
     :type source: str
-    :param datapath: If ``source`` is "disk", then the path to the files; ignored otherwise
+    :param datapath: If ``source`` is "disk", then the path to the files;
+        ignored otherwise
     :type datapath: str
     '''
     # Read in a list of KIC IDs and Quarter numbers to process from STDIN.
-    data = __read_input(sys.stdin)
+    data = __read_input(instream)
 
     # Call the correct function based on the desired source.
     if source == 'mast':
-        ldr = MASTDataDownloader(data, printout=True)
+        MASTDataDownloader(data, outstream=outstream)
     elif source == 'disk':
-        ldr = DiskDataLoader(data, datapath, printout=True)
+        DiskDataLoader(data, datapath, outstream=outstream)
     else:
         raise ValueError('Invalid source parameter: %s' % source)
 
@@ -326,17 +336,19 @@ def __read_input(file):
 
 if __name__ == "__main__":
     # Set up the command line argument parser.
-    parser = ArgumentParser(description="Retrieve Kepler lightcurve data given a set of Kepler "
-        "IDs and Quarter numbers from STDIN.")
+    parser = ArgumentParser(description="Retrieve Kepler lightcurve data given "
+        "a set of Kepler IDs and Quarter numbers from STDIN.")
     parser.add_argument("source", action="store", choices=['mast','disk'],
         help="Select the source where Kepler FITS files should be retrieved.")
-    parser.add_argument("datapath", action="store", nargs='?', default=os.curdir+os.sep,
-        help="(Root) path to the Kepler lightcurve data, such that root is the path part "
-            "<root>/<nnnn>/<nnnnnnnnn>/.  Defaults to the current working directory.")
+    parser.add_argument("datapath", action="store", nargs='?',
+        default=os.curdir+os.sep, help="(Root) path to the Kepler lightcurve "
+        "data, such that root is the path part <root>/<nnnn>/<nnnnnnnnn>/.  "
+        "Defaults to the current working directory.")
     args = parser.parse_args()
 
     try:
-        main(args.source, os.path.normpath(args.datapath))
+        main(args.source, os.path.normpath(args.datapath), instream=sys.stdin,
+            outstream=sys.stdout)
     except:
         handle_exception(sys.exc_info())
         sys.exit(1)
