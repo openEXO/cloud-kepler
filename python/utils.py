@@ -51,7 +51,6 @@ class ColoredFormatter(logging.Formatter):
             levelname_color = COLOR_SEQ % (30 + COLORS[levelname]) + levelname + RESET_SEQ
             record.levelname = levelname_color
         return logging.Formatter.format(self, record)
-
 ###########################################################################
 
 
@@ -108,31 +107,6 @@ def boxcar(time, duration, depth, midtime):
     flux[ndx] += depth
 
     return flux
-
-
-def bin_and_detrend_slow(time, flux, fluxerr, nbins, segstart, segend):
-    segsize = segend - segstart
-
-    t1, f1, e1 = bin_single_segment_slow(time, flux, fluxerr, nbins,
-        segstart - segsize, segstart)
-    t2, f2, e2 = bin_single_segment_slow(time, flux, fluxerr, nbins,
-        segstart, segend)
-    t3, f3, e3 = bin_single_segment_slow(time, flux, fluxerr, nbins,
-        segend, segend + segsize)
-
-    t = np.concatenate((t1,t2,t3))
-    f = np.concatenate((f1,f2,f3))
-    e = np.concatenate((e1,e2,e3))
-
-    ndx = np.where(np.isfinite(f))
-    m = (segstart + segend) / 2.
-    coeffs = polyfit.polyfit(t[ndx] - m, f[ndx], e[ndx], 3)
-    trend = poly.polyval(t2 - m, coeffs)
-    f_detrend = f2 / trend
-    f_detrend -= 1.
-    e_detrend = e2 / trend
-
-    return t2, f2, e2, trend, f_detrend, e_detrend
 
 
 def bin_single_segment_slow(time, flux, fluxerr, nbins, segstart, segend):
