@@ -2,9 +2,11 @@ curl -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.tar
 tar xvfz virtualenv-1.11.tar.gz
 
 rm -rf py
-python virtualenv-1.11/virtualenv.py --clear py
+PYTHONEXE=/usr/stsci/ssbx/python/bin/python
+python virtualenv-1.11/virtualenv.py -p $PYTHONEXE --clear py
 source py/bin/activate
-export PYTHONPATH=py/lib/python2.7/site-packages
 
-pip install -r ../python/requirements.txt
+PYVERS=$(python -c "import sys; print '.'.join(map(str, sys.version_info[0:2]))")
+export PYTHONPATH="py/lib/python${PYVERS}/site-packages"
+pip install --allow-unverified pil --allow-external pil -r ../python/requirements.txt
 

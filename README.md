@@ -21,7 +21,7 @@ More on Amazon Elastic Map-Reduce and Hadoop:
 * http://hadoop.apache.org/
 
 
-This branch includes a Cython implementation of the BLS algorithm. A few 
+This branch includes a Cython implementation of the BLS algorithm. A few
 things to keep in mind:
 
 * Cython code must be compiled for changes to take effect. To compile, just run

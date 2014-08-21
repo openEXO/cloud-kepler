@@ -1,3 +1,5 @@
+#!/bin/bash
+
 echo "Load the Hadoop environment"
 source setenv.sourceme
 input_filename="sandbox/eprice/tres2.in"

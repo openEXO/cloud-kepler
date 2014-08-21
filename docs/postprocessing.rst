@@ -6,7 +6,7 @@
     :private-members:
     :undoc-members:
 
-.. automodule:: postprocessing.dip_blip_diagram
+.. automodule:: postprocessing.quicklook
     :members:
     :private-members:
     :undoc-members:

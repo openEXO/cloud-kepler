@@ -7,5 +7,5 @@ from Cython.Distutils import build_ext
 import numpy as np
 
 setup(cmdclass = {'build_ext': build_ext}, ext_modules =
-    [Extension('polyfit', sources=['polyfit.pyx'], include_dirs=[np.get_include()])])
+    [Extension('detrend', sources=['detrend.pyx'], include_dirs=[np.get_include()])])
 

@@ -31,3 +31,8 @@ BLS pulse algorithm
 ``bls_pulse_cython`` -- Optimized Cython implementation
 =======================================================
 
+.. automodule:: bls_pulse_cython
+    :members:
+    :private-members:
+    :undoc-members:
+

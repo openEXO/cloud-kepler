@@ -1,9 +1,15 @@
 numpy==1.8.1
+mock
 scipy
+openpyxl==1.8.6
+pandas==0.13.0
 matplotlib
 pandas==0.13.0
 cython
 pyfits
 sphinx
-mock
+argparse
 configparser
+scikit-learn
+reportlab
+pil

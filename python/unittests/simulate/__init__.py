@@ -1,2 +1,3 @@
 from simulate_box_lightcurve import simulate_box_lightcurve
+from simulate_compound_signal import simulate_compound_signal
 

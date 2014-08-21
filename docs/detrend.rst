@@ -2,8 +2,7 @@
 **************************************
 
 .. automodule:: detrend
-
-
-``polyfit`` -- Cython polynomial detrender with sigma clipping
-==============================================================
+    :members:
+    :private-members:
+    :undoc-members:
 
