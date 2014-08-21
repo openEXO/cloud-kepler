@@ -25,7 +25,7 @@ class BLSPulse(MRJob):
                 os.path.join(FOLDER, 'join_quarters.py')),
             self.mr(reducer_cmd='/home/zonca/py/bin/python ' +
                 os.path.join(FOLDER, 'drive_bls_pulse.py') + ' -c ' +
-                'sandbox/eprice/pulse.conf'
+                os.path.join(FOLDER, 'sandbox/eprice/pulse.conf'))
             ]
 
 if __name__ == '__main__':

@@ -133,7 +133,7 @@ class MASTDataDownloader(object):
                     # Write the result to STDOUT as this will be an input to a
                     # reducer that aggregates the querters together
                     outstream.write("\t".join([kepler_id + '_' + suffix,
-                        quarter, p, self.stream.dstream1, self.stream.dstream2,
+                        quarter.zfill(2), p, self.stream.dstream1, self.stream.dstream2,
                         self.stream.dstream3]) + '\n')
 
                 os.unlink(tempfile)
@@ -244,7 +244,7 @@ class DiskDataLoader(object):
                     # Write the result to STDOUT as this will be an input to a
                     # reducer that aggregates the querters together
                     outstream.write("\t".join([kepler_id + '_' + suffix,
-                        quarter, p, self.stream.dstream1, self.stream.dstream2,
+                        quarter.zfill(2), p, self.stream.dstream1, self.stream.dstream2,
                         self.stream.dstream3]) + '\n')
 
 
