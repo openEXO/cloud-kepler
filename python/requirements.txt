@@ -4,7 +4,6 @@ scipy
 openpyxl==1.8.6
 pandas==0.13.0
 matplotlib
-pandas==0.13.0
 cython
 pyfits
 sphinx
