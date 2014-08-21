@@ -1,12 +1,14 @@
+#!/bin/bash
+
 echo "Load the Hadoop environment"
 source setenv.sourceme
+input_filename="sandbox/eprice/tres2.in"
 
 echo "Making a directory for our input data"
 hadoop dfs -mkdir mrjob-input
 
 echo "Copying input text to HDFS"
-input_filename=$(basename "$1")
-hadoop dfs -put $1 mrjob-input/$input_filename
+hadoop dfs -put ../python/$input_filename mrjob-input/$input_filename
 
 echo "Running our mrjob Python script"
 ./bls_pulse_mrjob.py \
