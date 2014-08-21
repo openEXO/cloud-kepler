@@ -1,20 +1,67 @@
 Run cloud-kepler on Gordon
 ==========================
 
+- You must be in the bash shell from the beginning.
+
+## Setup Python environment on Gordon
+
+Add:
+
+    module load python scipy
+
+to your `.bashrc`.
+
+all the scripts are setup to use a standard Python environment available in `/home/zonca/py`
+in order to launch the python environment in the login node,
+run:
+
+    source /home/zonca/py/bin/activate
+    
+If successful, you should see a (py) in front of your unix prompt.
+
+## Launch a Hadoop job
+
 First it is necessary to start Hadoop on Gordon using:
 
-https://github.com/sdsc/sdsc-user/blob/master/jobscripts/gordon/hadoop-cluster.qsub
+```
+    qsub hadoop-cluster.qsub
 
-Once the job starts, it creates a file `setenv.sourceme` in
-the folder it was submitted from.
+```
+which is inside the folder "hadoop-mrjob" at the main level.
 
-The file contains the address of the Hadoop head node, `ssh` into that node and run:
+The original script is: <https://github.com/sdsc/sdsc-user/blob/master/jobscripts/gordon/hadoop-cluster.qsub>
+
+You will need to monitor the output of:
+
+```
+    qstat -u <your_user_name>
+```
+
+One good way to do this is via the following command:
+
+    watch -n 2 qstat -u <your_user_name>
+
+Once the job starts (the "S" column goes from 'Q' to 'R'), it creates a file `setenv.sourceme` in the folder it was submitted from.
+
+Read the instructions in `setenv.sourceme` to connect to the Hadoop head node.  Once ssh'd into the compute node, you may want to activate the python virtual environment again:
+
+    source /home/zonca/py/bin/activate
+
+## Submit an example word count job to Hadoop
+
+    . run_example_mrjob.sh
+
+Check the output folder `mrjob-wordcount-output/`
+
+## Submit a cloud-kepler job to Hadoop
 
     . run_mrjob.sh
+
+Check the output folder `mrjob-output/`.
 
 The script takes care of copying the sample input file to HFS, run `bls_pulse.py`,
 collect the results and copy the results back to `mrjob-output/`.
 The Hadoop job is configured using [mrjob](http://pythonhosted.org/mrjob/).
 
 --
-16 Dec 2013 zonca@sdsc.edu
+26 Jun 2014 zonca@sdsc.edu
