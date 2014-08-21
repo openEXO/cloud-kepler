@@ -79,8 +79,9 @@ def make_report(infile, subdir='pdfs'):
             depth = lchdr['depth']
 
             pftime = np.mod(time, period)
-            signal_mask = ((pftime > phase - 0.5 * duration) &
-                (pftime < phase + 0.5 * duration))
+            pftime2 = np.mod(time - phase + period / 2., period)
+            signal_mask = ((pftime2 > 0.5 * period - 0.5 * duration) &
+                (pftime2 < 0.5 * period + 0.5 * duration))
 
             plt.subplot(211)
             plt.scatter(time, flux, color=color1, edgecolor=edgecolor,

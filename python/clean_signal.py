@@ -22,7 +22,7 @@ class NonIntegerClustersError(Exception):
     pass
 
 
-def clean_signal(time, flux, dtime, dflux, dfluxerr, out, guess_period=None):
+def clean_signal(time, flux, dtime, dflux, dfluxerr, out, model='box'):
     '''
     Remove possible eclipsing binary signals from a light curve. This works
     best on deep, strongly periodic signals, so it is unlikely to clean
@@ -127,31 +127,51 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out, guess_period=None):
         best_period, tol=1.e-7, options={'disp':False})
     best_period = res.x[0]
 
-    def smooth(x, window_len):
-        s = np.r_[x[window_len-1:0:-1],x,x[-1:-window_len:-1]]
-        w = np.ones(window_len,'d')
-        y = np.convolve(w / w.sum(), s, mode='valid')
-        return y[(window_len/2-1):-(window_len/2+1)]
-
-    def plavchan(time, flux, period):
-        pftime = np.mod(time, period)
-        ndx = np.argsort(pftime)
-        f = interp.interp1d(pftime[ndx], flux[ndx])
-        new_t = np.linspace(time[0], time[-1], time.shape[0])
-        new_f = smooth(f(pftime[ndx]), 11)
-        f = interp.interp1d(pftime[ndx], new_f)
-
-        chisq = (flux - f(pftime))**2.
-        ndx = np.argsort(chisq)
-        return np.sum(chisq[ndx][-26:-1])
-
-    #best_period = opt.fmin(lambda x: plavchan(dtime[mask], dflux[mask], x),
-    #    best_period, xtol=1.e-6, disp=0)[0]
-
     logger.info('Best period: %g' % best_period)
     best_phase = np.median(np.mod(best_midtimes, best_period))
 
-    # Fit the entire transit event with boxcar parameters.
+    # Fit the entire transit event with a model.
+    p0 = np.array([best_duration, depth, best_phase, best_period],
+        dtype='float64')
+    mask = np.isfinite(dflux)
+
+    if model == 'box':
+        pbest = __do_fit_box(p0, dtime[mask], dflux[mask])
+    elif model == 'trapezoid':
+        pbest = __do_fit_trapezoid(p0, dtime[mask], dflux[mask])
+    else:
+        raise ValueError('Invalid model specifier %s' % model)
+
+    best_duration = pbest[0]
+    best_depth = pbest[1]
+    best_phase = pbest[2]
+    best_period = pbest[3]
+
+    pftime = np.mod(time - best_phase - best_period / 2., best_period) / \
+        best_period
+    mask = ((pftime > 0.5 - 2. * best_duration / best_period) &
+        (pftime < 0.5 + 2. * best_duration / best_period))
+    flux[mask] = np.nan
+
+    return dict(period=best_period, duration=best_duration, depth=best_depth,
+        phase=best_phase)
+
+
+def __do_fit_box(p0, time, flux):
+    '''
+    Fit the given data with a boxcar function, given guess parameters.
+
+    :param p0: Array of [duration, depth, phase, period] to use as guess
+    :type p0: np.ndarray
+    :param time: Array of observation times
+    :type time: np.ndarray
+    :param flux: Array of fluxes at each time
+    :type flux: np.ndarray
+
+    :rtype: np.ndarray
+    '''
+    logger.info('Best guess boxcar parameters:\n\t' + str(p0))
+
     def boxcar(time, duration, depth, phase, period):
         pftime = np.mod(time - phase - period / 2., period) / period
 
@@ -162,27 +182,57 @@ def clean_signal(time, flux, dtime, dflux, dfluxerr, out, guess_period=None):
 
         return flux
 
-    p0 = np.array([best_duration, depth, best_phase, best_period],
-        dtype='float64')
-    logger.info('Best guess boxcar parameters:\n\t' + str(p0))
-
-    ndx = np.where(np.isfinite(dflux))
-    f = lambda x: np.sum((dflux[ndx] - boxcar(dtime[ndx], *x))**2.)
+    f = lambda x: np.sum((flux - boxcar(time, *x))**2.)
     pbest = opt.fmin(f, p0, disp=0)
     logger.info('Best fit boxcar parameters:\n\t' + str(pbest))
 
-    best_duration = pbest[0]
-    best_depth = pbest[1]
-    best_phase = pbest[2]
-    best_period = pbest[3]
+    return pbest
 
-    pftime = np.mod(time - best_phase - best_period / 2., best_period) / best_period
-    mask = ((pftime > 0.5 - 2. * best_duration / best_period) &
-        (pftime < 0.5 + 2. * best_duration / best_period))
-    flux[mask] = np.nan
 
-    return dict(period=best_period, duration=best_duration, depth=best_depth,
-        phase=best_phase)
+def __do_fit_trapezoid(p0, time, flux, frac=0.25):
+    '''
+    Fit the given data with a trapezoid model, given guess parameters.
+    Note that since there is no guess for `tau` (ingress/egress duration),
+    some fraction of the duration is used.
+
+    :param p0: Array of [duration, depth, phase, period] to use as guess
+    :type p0: np.ndarray
+    :param time: Array of observation times
+    :type time: np.ndarray
+    :param flux: Array of fluxes at each time
+    :type flux: np.ndarray
+
+    :rtype: np.ndarray
+    '''
+    q0 = np.array([p0[1], p0[0], frac * p0[0], p0[2], p0[3]], dtype='float64')
+    logger.info('Best guess trapezoid parameters:\n\t' + str(q0))
+
+    def trapezoid(time, delta, T, tau, phase, period):
+        pftime = np.mod(time - phase - period / 2., period)
+        tc = period / 2.
+        flux = np.zeros_like(time)
+
+        mask = np.absolute(pftime - tc) <= T / 2. - tau / 2.
+        flux[mask] += delta
+
+        mask = (T / 2. - tau / 2. < np.absolute(pftime - tc)) & \
+            (np.absolute(pftime - tc) < T / 2. + tau / 2.)
+        flux[mask] += delta - (delta / tau) * (np.absolute(pftime[mask] - tc) -
+            T / 2. + tau / 2.)
+
+        return flux
+
+    f = lambda x: np.sum((flux - trapezoid(time, *x))**2.) if x[0] < 0. and \
+        x[1] >= x[2] and x[1] > 0. and x[2] > 0. and x[3] > 0. else np.inf
+    qbest = opt.fmin(f, q0, disp=0)
+    logger.info('Best fit trapezoid parameters:\n\t' + str(qbest))
+
+    # Re-package the parameters for the calling function. Duration becomes
+    # T + tau.
+    pbest = np.array([qbest[1] + qbest[2], qbest[0], qbest[3], qbest[4]],
+        dtype='float64')
+
+    return pbest
 
 
 def __do_period_search(X, time, mask, step=1, err_midtime=0.1, err_flux=0.01,

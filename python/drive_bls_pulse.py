@@ -72,6 +72,9 @@ def __init_parser(defaults):
     parser.add_argument('--fitsdir', action='store', type=str,
         dest='fitsdir', default=defaults['fits_dir'],
         help='[Optional] Directory for FITS output.')
+    parser.add_argument('--model', action='store', type=str, dest='model',
+        default=defaults['model_type'],
+        help='[Optional] Type of model to fit (box or trapezoid)')
 
     return parser
 
@@ -116,7 +119,7 @@ def main():
     defaults = {'min_duration':'0.0416667', 'max_duration':'0.5',
         'n_bins':'100', 'direction':'0', 'print_format':'encoded',
         'verbose':'0', 'profiling':'0', 'clean_max':'5', 'fits_output':'1',
-        'fits_dir':''}
+        'fits_dir':'', 'model_type':'box'}
 
     # Set up the parser for command line arguments and read them.
     parser = __init_parser(defaults)
@@ -140,6 +143,7 @@ def main():
         cfg['clean_max'] = args.clean_max
         cfg['fitsout'] = args.fitsout
         cfg['fitsdir'] = args.fitsdir
+        cfg['model'] = args.model_type
     else:
         # Configuration file was given; read it instead.
         cp = ConfigParser(defaults)
@@ -156,6 +160,7 @@ def main():
         cfg['clean_max'] = cp.getint('DEFAULT', 'clean_max')
         cfg['fitsout'] = cp.getboolean('DEFAULT', 'fits_output')
         cfg['fitsdir'] = cp.get('DEFAULT', 'fits_dir')
+        cfg['model'] = cp.get('DEFAULT', 'model_type')
 
     if cfg['fitsout'] and cfg['fitsdir'] == '':
         parser.error('No FITS output directory specified.')
@@ -222,12 +227,8 @@ def main():
             midtime_blip = bls_out['midtime_blip']
 
             try:
-                if clean_out is not None:
-                    clean_out = clean_signal(time, flux, dtime, dflux, dfluxerr,
-                        bls_out, guess_period=clean_out['period'])
-                else:
-                    clean_out = clean_signal(time, flux, dtime, dflux, dfluxerr,
-                        bls_out)
+                clean_out = clean_signal(time, flux, dtime, dflux, dfluxerr,
+                    bls_out, model=cfg['model'])
             except RuntimeError:
                 break
 
