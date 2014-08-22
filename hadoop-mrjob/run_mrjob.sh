@@ -7,6 +7,10 @@ input_filename="sandbox/eprice/tres2.in"
 echo "Making a directory for our input data"
 hadoop dfs -mkdir mrjob-input
 
+echo "Deleting old output directories"
+hadoop dfs -rmr mrjob-output
+rm -r mrjob-output
+
 echo "Copying input text to HDFS"
 hadoop dfs -put ../python/$input_filename mrjob-input/$input_filename
 

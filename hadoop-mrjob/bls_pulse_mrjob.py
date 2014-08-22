@@ -4,8 +4,8 @@ import os
 from mrjob.job import MRJob
 import mrjob.protocol
 
-FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
-    'python'))
+THISDIR = os.path.abspath(os.path.join(os.path.dirname(__file__)))
+PYDIR = os.path.abspath(os.path.join(THISDIR, '..', 'python'))
 
 class BLSPulse(MRJob):
     '''
@@ -20,12 +20,12 @@ class BLSPulse(MRJob):
     def steps(self):
         return [
             self.mr(mapper_cmd='/home/zonca/py/bin/python ' +
-                os.path.join(FOLDER, 'get_data.py') + ' mast',
+                os.path.join(PYDIR, 'get_data.py') + ' mast',
                 reducer_cmd='/home/zonca/py/bin/python ' +
-                os.path.join(FOLDER, 'join_quarters.py')),
+                os.path.join(PYDIR, 'join_quarters.py')),
             self.mr(reducer_cmd='/home/zonca/py/bin/python ' +
-                os.path.join(FOLDER, 'drive_bls_pulse.py') + ' -c ' +
-                os.path.join(FOLDER, 'sandbox/eprice/pulse.conf'))
+                os.path.join(PYDIR, 'drive_bls_pulse.py') + ' -c ' +
+                os.path.join(THISDIR, 'pulse.conf'))
             ]
 
 if __name__ == '__main__':

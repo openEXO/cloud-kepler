@@ -59,7 +59,13 @@ class BLSFitsBundler():
             columns.append(pyfits.Column(name=k, array=v, format='D'))
 
         cols = pyfits.ColDefs(columns)
-        tbhdu = pyfits.BinTableHDU.from_columns(cols)
+        
+        try:
+            tbhdu = pyfits.BinTableHDU.from_columns(cols)
+        except AttributeError:
+            temp = pyfits.FITS_rec.from_columns(cols)
+            tbhdu = pyfits.BinTableHDU(temp)
+
         self.ext_list.insert(0, tbhdu)
 
 
@@ -113,7 +119,13 @@ class BLSFitsBundler():
             pyfits.Column(name='Flux', array=flux, format='D'),
             pyfits.Column(name='Flux error', array=fluxerr, format='D')]
         cols = pyfits.ColDefs(columns)
-        tbhdu = pyfits.BinTableHDU.from_columns(cols, header=hdr)
+
+        try:
+            tbhdu = pyfits.BinTableHDU.from_columns(cols, header=hdr)
+        except AttributeError:
+            temp = pyfits.FITS_rec.from_columns(cols)
+            tbhdu = pyfits.BinTableHDU(temp, header=hdr)        
+
         self.ext_list.insert(0, tbhdu)
 
 
@@ -136,7 +148,11 @@ class BLSFitsBundler():
         hdr = pyfits.Header()
         hdr['EXTNAME'] = 'INPUT_PARAMS'
 
-        self.cfghdu = pyfits.TableHDU.from_columns(cols, header=hdr)
+        try:
+            self.cfghdu = pyfits.TableHDU.from_columns(cols, header=hdr)
+        except AttributeError:
+            temp = pyfits.FITS_rec.from_columns(cols)
+            self.cfghdu = pyfits.TableHDU(temp, header=hdr)
 
 
     def write_file(self, fname, clobber=False):
