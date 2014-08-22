@@ -8,6 +8,10 @@ hadoop dfs -mkdir mrjob-input
 echo "Copying input text to HDFS"
 hadoop dfs -put $input_filename mrjob-input/$input_filename
 
+echo "Deleting old output directories"
+hadoop dfs -rmr mrjob-wordcount-output
+rm -r mrjob-wordcount-output
+
 echo "Running our mrjob Python script"
 python mr_word_freq_count.py \
     -r hadoop \
