@@ -16,6 +16,11 @@ have randomly-generated filenames that will still be consistent between STDERR, 
 and logging. This is a good practice when submitting large jobs but there is a
 performance decrease associated with it; use with caution.
 
+Valid examples of calling the `geninput` script:
+
+    python geninput.py ../python/sandbox/eprice/koilist.in pulse.conf
+    python geninput.py -n 1000 ../python/sandbox/eprice/targets.in pulse.conf
+
 Useful HTCondor commands
 ------------------------
 
