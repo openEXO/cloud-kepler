@@ -9,6 +9,13 @@ Two directories, `condor_input` and `condor_output`, are also created; all the
 output (STDOUT, STDERR, and logging) from HTCondor will appear in the 
 `condor_output` directory with consistent filenames.
 
+Because the cluster crashed the last time we tried to submit 200,000 jobs at one time,
+`geninput.py` offers an option `-n <N>` for specifying the number of stars `N` per job 
+that should be created. In this case, instead of naming files `KIC*.*`, the files will 
+have randomly-generated filenames that will still be consistent between STDERR, STOUT,
+and logging. This is a good practice when submitting large jobs but there is a
+performance decrease associated with it; use with caution.
+
 Useful HTCondor commands
 ------------------------
 
