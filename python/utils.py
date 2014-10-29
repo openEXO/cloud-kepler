@@ -13,7 +13,6 @@ import base64
 import logging
 import traceback
 import numpy as np
-from detrend import polyfit
 from numpy.polynomial import polynomial as poly
 
 ###########################################################################
