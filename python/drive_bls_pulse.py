@@ -23,7 +23,6 @@ logger = setup_logging(__file__)
 
 np.seterr(all='ignore')
 
-
 def __init_parser(defaults):
     '''
     Set up an argument parser for all possible command line options. Returns
