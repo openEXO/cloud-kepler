@@ -47,6 +47,10 @@ Read the instructions in `setenv.sourceme` to connect to the Hadoop head node.  
 
     source /home/zonca/py/bin/activate
 
+You will want to verify the bls_pulse parameters are correct, paying particular attention to things like the "fits_dir" parameter (make sure you have write access to this location before submitting your job!).
+    
+    more hadoop-mrjob/pulse.conf
+
 ## Submit an example word count job to Hadoop
 
     . run_example_mrjob.sh
