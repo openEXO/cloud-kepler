@@ -13,13 +13,15 @@ from utils import read_mapper_output, encode_array, setup_logging, \
     handle_exception
 from bls_pulse_cython import bls_pulse, bin_and_detrend
 from argparse import ArgumentParser
-from configparser import ConfigParser, NoOptionError
+if sys.version_info[0] >= 3:
+    from configparser import ConfigParser, NoOptionError
+else:
+    from ConfigParser import ConfigParser, NoOptionError
 
 # Basic logging configuration.
 logger = setup_logging(__file__)
 
 np.seterr(all='ignore')
-
 
 def __init_parser(defaults):
     '''

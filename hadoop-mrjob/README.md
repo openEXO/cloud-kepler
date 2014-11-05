@@ -43,9 +43,14 @@ One good way to do this is via the following command:
 
 Once the job starts (the "S" column goes from 'Q' to 'R'), it creates a file `setenv.sourceme` in the folder it was submitted from.
 
-Read the instructions in `setenv.sourceme` to connect to the Hadoop head node.  Once ssh'd into the compute node, you may want to activate the python virtual environment again:
+Read the instructions in `setenv.sourceme` to connect to the Hadoop head node.  Once ssh'd into the compute node, you should activate the python virtual environment again:
 
+    module load python scipy
     source /home/zonca/py/bin/activate
+
+You will want to verify the bls_pulse parameters are correct, paying particular attention to things like the "fits_dir" parameter (make sure you have write access to this location before submitting your job!).
+    
+    more pulse.conf
 
 ## Submit an example word count job to Hadoop
 
