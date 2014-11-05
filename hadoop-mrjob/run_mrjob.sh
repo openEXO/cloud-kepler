@@ -2,7 +2,7 @@
 
 echo "Load the Hadoop environment"
 source setenv.sourceme
-input_filename="sandbox/eprice/tres2.in"
+input_filename="sandbox/fleming/forAndrea/tres2.in"
 
 echo "Making a directory for our input data"
 hadoop dfs -mkdir mrjob-input
