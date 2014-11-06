@@ -19,8 +19,13 @@ class BLSPulse(MRJob):
 
     def steps(self):
         return [
+            # Uncomment the block below to get data files from MAST through the web, instead of locally through the disk.
+            #self.mr(mapper_cmd='/home/zonca/py/bin/python ' +
+            #    os.path.join(PYDIR, 'get_data.py') + ' mast',
+            #    reducer_cmd='/home/zonca/py/bin/python ' +
+            #    os.path.join(PYDIR, 'join_quarters.py')),
             self.mr(mapper_cmd='/home/zonca/py/bin/python ' +
-                os.path.join(PYDIR, 'get_data.py') + ' mast',
+                os.path.join(PYDIR, 'get_data.py') + ' disk /oasis/projects/nsf/sts100/fleming/lightcurves/ ',
                 reducer_cmd='/home/zonca/py/bin/python ' +
                 os.path.join(PYDIR, 'join_quarters.py')),
             self.mr(reducer_cmd='/home/zonca/py/bin/python ' +
