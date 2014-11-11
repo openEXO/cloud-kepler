@@ -3,7 +3,7 @@ Run cloud-kepler on Gordon
 
 - You must be in the bash shell from the beginning.
 
-- It is STRONGLY advised that you immediately start a screen session on the login node, so that if you start a long job on the compute node you don't need to leave that terminal up for the entire duration.  This can be accomplished by:
+It is STRONGLY advised that you immediately start a screen session on the login node, so that if you start a long job on the compute node you don't need to leave that terminal up for the entire duration.  This can be accomplished by:
 
     screen -S <choose_a_screen_session_name>
 
