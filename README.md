@@ -1,9 +1,9 @@
 Prototype of Cloud Kepler
 =========================
-| Master | v1.2 |
-| :----: | :--: |
-| ![Logo](https://travis-ci.org/openEXO/cloud-kepler.svg?branch=master) | ![Logo](https://travis-ci.org/openEXO/cloud-kepler.svg?branch=v1.2) |
-| ![Logo](https://readthedocs.org/projects/cloud-kepler/badge/?version=latest) | ![Logo](https://readthedocs.org/projects/cloud-kepler/badge/?version=v1.2) |
+| Master | v1.25 |
+| :----: | :---: |
+| ![Logo](https://travis-ci.org/openEXO/cloud-kepler.svg?branch=master) | ![Logo](https://travis-ci.org/openEXO/cloud-kepler.svg?branch=v1.25) |
+| ![Logo](https://readthedocs.org/projects/cloud-kepler/badge/?version=latest) | ![Logo](https://readthedocs.org/projects/cloud-kepler/badge/?version=v1.25) |
 
 Pipeline for processing Kepler lightcurves and search for signals of planets/flares.
 
@@ -19,7 +19,6 @@ More on Amazon Elastic Map-Reduce and Hadoop:
 * http://aws.amazon.com/elasticmapreduce/
 
 * http://hadoop.apache.org/
-
 
 This branch includes a Cython implementation of the BLS algorithm. A few
 things to keep in mind:
