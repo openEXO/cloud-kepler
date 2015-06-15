@@ -14,7 +14,7 @@ import os
 import sys
 import urllib2
 import tempfile
-import pyfits
+from astropy.io import fits as pyfits
 import numpy as np
 from contextlib import contextmanager
 from argparse import ArgumentParser
@@ -333,22 +333,22 @@ def __read_input(file):
             else:
                 yield s
 
-
+                
 if __name__ == "__main__":
     # Set up the command line argument parser.
     parser = ArgumentParser(description="Retrieve Kepler lightcurve data given "
-        "a set of Kepler IDs and Quarter numbers from STDIN.")
+                            "a set of Kepler IDs and Quarter numbers from STDIN.")
     parser.add_argument("source", action="store", choices=['mast','disk'],
-        help="Select the source where Kepler FITS files should be retrieved.")
+                        help="Select the source where Kepler FITS files should be retrieved.")
     parser.add_argument("datapath", action="store", nargs='?',
-        default=os.curdir+os.sep, help="(Root) path to the Kepler lightcurve "
-        "data, such that root is the path part <root>/<nnnn>/<nnnnnnnnn>/.  "
-        "Defaults to the current working directory.")
+                        default=os.curdir+os.sep, help="(Root) path to the Kepler lightcurve "
+                        "data, such that root is the path part <root>/<nnnn>/<nnnnnnnnn>/.  "
+                        "Defaults to the current working directory.")
     args = parser.parse_args()
-
+    
     try:
         main(args.source, os.path.normpath(args.datapath), instream=sys.stdin,
-            outstream=sys.stdout)
+             outstream=sys.stdout)
     except:
         handle_exception(sys.exc_info())
         sys.exit(1)

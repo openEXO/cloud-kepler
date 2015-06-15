@@ -4,7 +4,7 @@
 import os
 import sys
 import Image
-import pyfits
+from astropy.io import fits as pyfits
 import cStringIO
 import numpy as np
 

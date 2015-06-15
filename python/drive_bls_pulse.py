@@ -293,12 +293,10 @@ def main():
             elif cfg['fmt'] == 'outfile' and cfg['fitsout']:
                 print outfile
         else:
-            srsq = out['srsq']
-            duration = out['duration']
-            depth = out['depth']
-            midtime = out['midtime']
-            segstart = out['segstart']
-            segend = out['segend']
+            srsq = bls_out['srsq']
+            duration = bls_out['duration']
+            depth = bls_out['depth']
+            midtime = bls_out['midtime']
 
             # Print output.
             if cfg['fmt'] == 'encoded':
