@@ -6,27 +6,31 @@ import csv
 import emcee
 
 
+#Right now, this is a crude version that does not properly integrate both the Star-Planet and Star-Star cases.
+#Future work requires rewriting this to be more modular and compatible with an arbitrary configuration
+#provided in an input file
+
+#Also need to account for eccentricity and an option to compare results to a light curve
+#May possibly make use of BATMAN package from Kreidberg 2015.
+
 #Minimize this for 'ideal' result
 def meritcalc(depthcalc, durcalc, periodcalc):
 	depthobs = 0.000359 #Fill in value here after looking at lightcurve properly#
 	durobs = 0.03986*24.0*60.0*60.0
-	#durobs =  1.19*24.0*60.0*60.0#Fill in value here after looking at lightcurve properly#
-	#periodobs = 1859.94*24.0*60.0*60.0
-	#periodobs = 3.0937*24.0*60.0*60.0
 	if not np.isfinite(depthcalc):
 		merit = 1e100
 	if not np.isfinite(durcalc):
 		merit = 1e100
-	#if depthcalc <= 0.1*depthobs:
-	#	merit = -np.inf
-	#if depthcalc >= 1.9*depthobs:
-	#	merit = -np.inf
-	
+
 	else:
 		try:
+			#If you know period and want to include it in merit function, use first option. Otherwise use second.
+
 			#merit = ((depthobs - depthcalc)/(depthobs))**2.0 + ((durobs - durcalc)/(durobs))**2.0 + ((periodobs - periodcalc)/(periodobs))**2.0
 			merit = ((depthobs - depthcalc)/(depthobs))**2.0 + ((durobs - durcalc)/(durobs))**2.0 
 		except:
+			#This avoids some memory overflow errors, but not all.	
+
 			depthobs = np.longdouble(depthobs)
 			depthcalc = np.longdouble(depthcalc)
 			durobs = np.longdouble(durobs)
@@ -58,7 +62,9 @@ def starparams(teff, logg, metal = 0.0):
 
 	return mstar, rstar
 
-#Crude mass estimate of planet based on radius. Drawn from TESS simulation paper, ApJ June 2015
+#Crude mass estimate of planet based on radius. Assumes a rocky planet. Drawn from TESS simulation paper, ApJ June 2015
+#Create a similar equivalent for a gas giant
+
 def mplanet(rplanet):
 	rearth = 6.378136e6
 	mearth = 5.9737e24
@@ -90,6 +96,8 @@ def depthcalc(rprimary, rsecondary):
 	try:
 		depth = (rsecondary/rprimary)**(2.0)
 	except:
+		#Avoids some memory overflow errors, not all.
+
 		rsecondary = np.longdouble(rsecondary)
 		rprimary = np.longdouble(rprimary)
 		depth = (rsecondary/rprimary)**(2.0)
@@ -108,6 +116,8 @@ def durcalc(period, axis, rprimary, rsecondary, inclination):
 		if duration <= 0.0:
 			duration = 0.999
 	except:
+		#Avoids some memory overflow errors, not all
+
 		rprimary = np.longdouble(rprimary)
 		axis = np.longdouble(axis)
 		rsecondary = np.longdouble(rsecondary)
@@ -144,10 +154,8 @@ def starmodel(params):
 
 
 
-#Given a position in RealGaussian parameter space, checks whether its parameters are physically valid. 
-#If some are found to be invalid, this reassigns them, but not purely randomly
-#If a parameter is greater than an allowed upper-bound, it is reassigned to a position
-#that is anywhere between 1 to 2.5 steps lesser than the upper-bound and vice-versa for lower bounds 
+#Defines uniform priors for the parameters of the MCMC within reasonable limits. Make more flexible.
+
 def planetsanitycheck(pos):
 	rjup = 7.1492e7
 	rearth = 6.378136e6
@@ -217,8 +225,7 @@ def starsanitycheck(pos):
 	return 0.0
 
 
-#Checks if the new position is better than the old. If it is, the position gets overwritten.
-#If not, there is a 1/4 chance that the position gets overwritten anyway
+
 
 def runmodel(pos, mode = 'planet'):
 	if mode == 'planet':
@@ -257,19 +264,13 @@ def fitmerit(initial, nwalkers = 500):
 
 	
 
-def scaleconvert(pos, mode = 'planet'):
-	if mode == 'planet':
-		rjup = 7.1492e7
-		pos[0] = pos[0]/(365.25*24.0*60.0*60.0)
-		pos[1] = pos[1]/rjup
-	if mode == 'star':
-		print 'Fill this in later'
-	return pos
-
 def initparams():
 	rearth = 6.378136e6
 	period = ((3.70 - 2.50)*np.random.random_sample() + 2.50)*(24.0*60.0*60.0)
 	rjup = 7.1492e7
+
+	#First one assumes gas giant, second is for super-earth
+
 	#rsecondary = ((3.0 - 0.0001)*np.random.random_sample() + 0.0001)*rjup
 	rsecondary = ((20.0 - 0.2)*np.random.random_sample() + 0.2)*rearth
 	teff = ((10000 - 3000)*np.random.random_sample() + 3000)
@@ -280,6 +281,10 @@ def initparams():
 
 
 def genoutputs(pos, mode = 'planet'):
+	#Sampler object output from MCMC only records the parameters input. This uses those positions to 
+	#generate the other physical quantities of interest.
+
+
 	if mode == 'planet':
 		mearth = 5.9737e24
 		msun = 1.9891e30
